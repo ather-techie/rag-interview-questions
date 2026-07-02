@@ -17,6 +17,10 @@
 
 ⭐ **Star this repo** if it helps your interview prep — it keeps the project growing.
 
+🔗 **Related repos:**
+- [ai-agents-design-patterns](https://github.com/ather-techie/ai-agents-design-patterns) — design patterns for building production AI agents
+- [ai-system-design-interview](https://github.com/ather-techie/ai-system-design-interview) — system design interview prep for AI/ML platforms
+
 ## What is RAG?
 
 **Retrieval-Augmented Generation (RAG)** is an LLM architecture that grounds model responses in external knowledge: documents are chunked, embedded, and stored in a vector database; at query time the most relevant chunks are retrieved via vector search and passed to the LLM as context for generation. RAG reduces hallucination, keeps answers current without retraining, and is the most common production pattern for enterprise LLM applications — which is why it dominates AI engineer and GenAI system design interviews.
