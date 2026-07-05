@@ -10,10 +10,10 @@
 
 
 <p align="center">
-  <img src="assets/logos/image.png" alt="RAG (Retrieval-Augmented Generation) Interview Questions and Answers — 429 Q&A covering 29 architectures and production failure modes" width="800" />
+  <img src="assets/logos/image.png" alt="RAG (Retrieval-Augmented Generation) Interview Questions and Answers — 505 Q&A covering 41 architectures and production failure modes" width="800" />
 </p>
 
-**429 RAG (Retrieval-Augmented Generation) interview questions and answers** for AI engineers, ML engineers, and GenAI/LLM developers. Covers all 29 RAG architectures, system design scenarios, vector databases, embeddings, chunking, reranking, evaluation, and the production failure modes that come up in real LLM engineering interviews.
+**505 RAG (Retrieval-Augmented Generation) interview questions and answers** for AI engineers, ML engineers, and GenAI/LLM developers. Covers all 41 RAG architectures, system design scenarios, vector databases, embeddings, chunking, reranking, evaluation, and the production failure modes that come up in real LLM engineering interviews.
 
 ⭐ **Star this repo** if it helps your interview prep — it keeps the project growing.
 
@@ -34,31 +34,37 @@
 
 ## 📚 Sections
 
-[Overview & Concepts](#-overview--concepts) · [RAG Architecture Interview Questions](#-rag-architecture-interview-questions-18-types) · [Failure Modes & Production Issues](#-failure-modes--production-issues) · [Coming Soon](#-coming-soon)
+[Overview & Concepts](#-overview--concepts) · [RAG Architecture Interview Questions](#-rag-architecture-interview-questions-41-types) · [Failure Modes & Production Issues](#-failure-modes--production-issues) · [Labs & Patterns](#-labs--patterns) · [Coming Soon](#-coming-soon)
 
 ### 📖 Overview & Concepts
 
 | # | Topic | Purpose | Questions |
 |---|-------|---------|-----------|
 | 00a | [Roadmap](./00_overview/roadmap.md) | RAG maturity model, skill progression, and interview prep pathway | – |
-| 00b | [RAG Taxonomy](./00_overview/rag_taxonomy.md) | Classification framework for all 29 architectures | – |
+| 00b | [RAG Taxonomy](./00_overview/rag_taxonomy.md) | Classification framework for all 41 architectures across 4 axes | – |
 | 00c | [Learning Path](./00_overview/learning_path.md) | Structured curriculum and study plans | – |
 | 00d | [System Design Principles](./00_overview/system_design_principles.md) | Production-grade architecture patterns | – |
-| 01a | [Embeddings](./01_concepts/embeddings.md) | Embedding models, similarity metrics, and fine-tuning | 1 |
-| 01b | [Chunking Strategies](./01_concepts/chunking_strategies.md) | Document splitting and chunk optimization | 1 |
-| 01c | [Vector Databases](./01_concepts/vector_databases.md) | Storage, indexing, and hybrid search | 1 |
-| 01d | [Retrieval Strategies](./01_concepts/retrieval_strategies.md) | Dense, sparse, hybrid, and advanced retrieval | 1 |
-| 01e | [Reranking](./01_concepts/reranking.md) | Cross-encoders and precision filtering | 1 |
-| 01f | [Evaluation Metrics](./01_concepts/evaluation_metrics.md) | RAGAS, NDCG, and production monitoring | 1 |
-| 01g | [Prompt Injection Risks](./01_concepts/prompt_injection_risks.md) | Security and defense strategies | 1 |
-| 01h | [Fine-Tuning for RAG](./01_concepts/fine_tuning.md) | When and how to fine-tune embeddings and rerankers | 1 |
-| 01i | [Observability & Evaluation Ops](./01_concepts/observability_and_evaluation_ops.md) | LLM-as-judge, online metrics, tracing, drift alerts | 1 |
-| 01j | [Multi-Tenancy & Access Control](./01_concepts/multi_tenancy_access_control.md) | Tenant isolation, document ACLs, leakage surfaces | 1 |
-| 01k | [Document Ingestion & Parsing](./01_concepts/document_ingestion_and_parsing.md) | Parsing pipelines, layout extraction, and text normalization | 1 |
+| 01a | [Embeddings](./01_concepts/embeddings.md) | Embedding models, similarity metrics, and fine-tuning | 2 |
+| 01b | [Chunking Strategies](./01_concepts/chunking_strategies.md) | Document splitting and chunk optimization | 2 |
+| 01c | [Vector Databases](./01_concepts/vector_databases.md) | Storage, indexing, and hybrid search | 2 |
+| 01d | [Retrieval Strategies](./01_concepts/retrieval_strategies.md) | Dense, sparse, hybrid, and advanced retrieval | 3 |
+| 01e | [Reranking](./01_concepts/reranking.md) | Cross-encoders and precision filtering | – |
+| 01f | [Evaluation Metrics](./01_concepts/evaluation_metrics.md) | RAGAS, NDCG, and production monitoring | 2 |
+| 01g | [Prompt Injection Risks](./01_concepts/prompt_injection_risks.md) | Security and defense strategies | – |
+| 01h | [Fine-Tuning for RAG](./01_concepts/fine_tuning.md) | When and how to fine-tune embeddings and rerankers | – |
+| 01i | [Observability & Evaluation Ops](./01_concepts/observability_and_evaluation_ops.md) | LLM-as-judge, online metrics, tracing, drift alerts | – |
+| 01j | [Multi-Tenancy & Access Control](./01_concepts/multi_tenancy_access_control.md) | Tenant isolation, document ACLs, leakage surfaces | 2 |
+| 01k | [Document Ingestion & Parsing](./01_concepts/document_ingestion_and_parsing.md) | Parsing pipelines, layout extraction, and text normalization | – |
+| 01l | [Knowledge Graph Construction](./01_concepts/knowledge_graph_construction.md) | Entity extraction, relation extraction, KG maintenance | 4 |
+| 01m | [Caching Strategies](./01_concepts/caching_strategies.md) | Semantic cache, KV preloading, invalidation, cost/freshness trade-offs | 4 |
+| 01n | [Cost Optimization](./01_concepts/cost_optimization.md) | Model tiering, prompt caching, quantization, batching | 4 |
+| 01o | [Agentic Orchestration](./01_concepts/agentic_orchestration.md) | Tool-call loops, stopping criteria, ReAct vs. plan-and-execute | 3 |
+| 01p | [Multimodal Embeddings](./01_concepts/multimodal_embeddings.md) | CLIP, ImageBind, cross-modal alignment, vision-language models | 3 |
+| 01q | [Conversational Memory Architecture](./01_concepts/conversational_memory_architecture.md) | Working/episodic/long-term memory, MemGPT paging, session detection | 3 |
 
-**Core Concepts Total: 11 questions**
+**Core Concepts Total: 34 questions across 17 files**
 
-### ❓ RAG Architecture Interview Questions (29 Types)
+### ❓ RAG Architecture Interview Questions (41 Types)
 
 | # | Topic | Questions |
 |---|-------|-----------|
@@ -91,8 +97,20 @@
 | 02.27 | [RETRO](./02_interview_bank/27-retro.md) | 12 |
 | 02.28 | [Atlas](./02_interview_bank/28-atlas.md) | 12 |
 | 02.29 | [Fusion-in-Decoder (FiD)](./02_interview_bank/29-fusion-in-decoder.md) | 12 |
+| 02.30 | [ColRAG / ColBERT](./02_interview_bank/30-colrag-colbert.md) | 5 |
+| 02.31 | [Agentic Web RAG](./02_interview_bank/31-agentic-web-rag.md) | 5 |
+| 02.32 | [Few-Shot Example RAG](./02_interview_bank/32-few-shot-example-rag.md) | 5 |
+| 02.33 | [Verifiable / Citation RAG](./02_interview_bank/33-verifiable-citation-rag.md) | 5 |
+| 02.34 | [Privacy-Preserving RAG](./02_interview_bank/34-privacy-preserving-rag.md) | 3 |
+| 02.35 | [Streaming / Real-Time RAG](./02_interview_bank/35-streaming-realtime-rag.md) | 3 |
+| 02.36 | [Table-Aware RAG](./02_interview_bank/36-table-aware-rag.md) | 3 |
+| 02.37 | [Tree of Thought RAG](./02_interview_bank/37-tot-rag.md) | 3 |
+| 02.38 | [DPR (Dense Passage Retrieval)](./02_interview_bank/38-dpr.md) | 3 |
+| 02.39 | [WebGPT / Tool-Augmented LM](./02_interview_bank/39-webgpt-tool-augmented-lm.md) | 3 |
+| 02.40 | [SURGE (Schema-Grounded RAG)](./02_interview_bank/40-surge-structured-grounded-rag.md) | 3 |
+| 02.41 | [Recursive Document Summarization RAG](./02_interview_bank/41-recursive-document-summarization-rag.md) | 3 |
 
-**RAG Architectures Total: 348 questions**
+**RAG Architectures Total: 392 questions**
 
 ### ⚠️ Failure Modes & Production Issues
 
@@ -105,34 +123,41 @@
 | 03.05 | [Context Window Overflow](./03_failure_modes/05-context_window_overflow.md) | 10 |
 | 03.06 | [Reranker Failure](./03_failure_modes/06-reranker_failure.md) | 10 |
 | 03.07 | [Conversational Context Drift](./03_failure_modes/07-conversational_context_drift.md) | 10 |
+| 03.08 | [Cascading Retrieval Failure](./03_failure_modes/08-cascading_retrieval_failure.md) | 4 |
+| 03.09 | [Semantic Cache Leakage](./03_failure_modes/09-semantic_cache_leakage.md) | 5 |
 
-**Failure Modes Total: 70 questions**
+**Failure Modes Total: 79 questions**
 
-**Grand Total: 429 questions**
+**Grand Total: 505 questions**
 
-**Difficulty distribution: ~41 Basic, ~154 Intermediate, ~223 Advanced**
+**Difficulty distribution: ~50 Basic, ~185 Intermediate, ~270 Advanced**
 
 All cited papers with arXiv/DOI links: [REFERENCES.md](./REFERENCES.md)
 
-### 🔄 Coming Soon
+### 🔬 Labs & Patterns
 
-Each planned section has a stub README describing what it will contain and how to contribute.
+Hands-on Jupyter notebooks and composition pattern guides:
+
+| # | Section | Contents |
+|---|---------|----------|
+| 04 | [Patterns](./04_patterns/README.md) | Router + fallback, fan-out/fan-in, migration path, anti-patterns |
+| 06 | [Labs](./06_labs/README.md) | 4 Jupyter notebooks: Naive RAG → Hybrid RAG → Reranker → RAGAS Evaluation |
+| 08 | [Evaluation](./08_evaluation/README.md) | Golden dataset construction guide + RAGAS CI harness |
+
+### 🔄 Coming Soon
 
 | # | Section | Status |
 |---|---------|--------|
-| 04 | [Patterns](./04_patterns/README.md) | Planned |
 | 05 | [Graphs](./05_graphs/README.md) | Planned |
-| 06 | [Labs](./06_labs/README.md) | Planned |
 | 07 | [Simulator](./07_simulator/README.md) | Planned |
-| 08 | [Evaluation](./08_evaluation/README.md) | Planned |
 | 09 | [Tools](./09_tools/README.md) | Planned |
 | 10 | [Decision System](./10_decision_system/README.md) | Planned |
 
 ---
 
-## 🗺️ RAG Architecture Types Explained (29 Patterns + 7 Failure Modes)
+## 🗺️ RAG Architecture Types Explained (41 Patterns + 9 Failure Modes)
 
-**RAG Architectures (29 types):**
+**RAG Architectures (41 types):**
 ```
 Naive RAG
   └── Chunk → Embed → Store → Retrieve → Generate
@@ -220,9 +245,45 @@ Atlas  [NEW]  (training-time)
 
 Fusion-in-Decoder (FiD)  [NEW]  (training-time)
   └── Encode passages separately, fuse them in the decoder
+
+ColRAG / ColBERT  [NEW]
+  └── Multi-vector late interaction (MaxSim); each token gets its own embedding
+
+Agentic Web RAG  [NEW]
+  └── Live web search as retrieval backend; real-time freshness + citation extraction
+
+Few-Shot Example RAG  [NEW]
+  └── Retrieves query→answer demonstrations rather than documents; plugged into the prompt
+
+Verifiable / Citation RAG  [NEW]
+  └── Inline citations mapped to specific passages; post-hoc attribution verification
+
+Privacy-Preserving RAG  [NEW]
+  └── On-device embedding, differential privacy, federated retrieval for zero-trust corpora
+
+Streaming / Real-Time RAG  [NEW]
+  └── Continuous index updates from Kafka / CDC; freshness window in seconds
+
+Table-Aware RAG  [NEW]
+  └── Structured retrieval over semi-structured tables; row/column linearization or SQL hybrid
+
+Tree of Thought RAG  [NEW]
+  └── ToT reasoning branches with conditional per-hypothesis retrieval
+
+DPR (Dense Passage Retrieval)  [NEW]  (foundational)
+  └── Bi-encoder trained with question–passage contrastive loss; parent of all learned dense retrieval
+
+WebGPT / Tool-Augmented LM  [NEW]  (foundational)
+  └── RLHF-trained to issue browser actions (search/click/quote) as a learned policy
+
+SURGE (Schema-Grounded RAG)  [NEW]
+  └── tool_use schema-constrained extraction + per-field NLI grounding validation
+
+Recursive Document Summarization RAG  [NEW]
+  └── 4-level summary tree (chunk→section→doc→corpus); routes queries to the right level
 ```
 
-**Production Failure Modes (7 critical issues):**
+**Production Failure Modes (9 critical issues):**
 ```
 Hallucination Despite Context
   └── LLM ignores retrieved docs, generates false claims
@@ -244,6 +305,12 @@ Reranker Failure
 
 Conversational Context Drift  [NEW]
   └── Multi-turn history poisons the retrieval query via unresolved references
+
+Cascading Retrieval Failure  [NEW]
+  └── Query expansion / HyDE / multi-hop amplifies the initial retrieval error instead of recovering
+
+Semantic Cache Leakage  [NEW]
+  └── Cached response for tenant A served to tenant B due to semantic similarity of queries
 ```
 
 ---
@@ -268,7 +335,7 @@ Conversational Context Drift  [NEW]
    - Use for system design rounds and production-readiness discussions
 
 4. **CHEATSHEET (cheatsheets/CHEATSHEET.md)** — Quick reference
-   - All 29 RAG types compared in one table
+   - All 41 RAG types compared in one table
    - Use during phone screens or quick prep
 
 **Study path:**
@@ -281,7 +348,7 @@ Conversational Context Drift  [NEW]
 
 ## 🏷️ Topics Covered
 
-Embeddings · Chunking strategies · Vector databases (FAISS, Pinecone, Weaviate, pgvector) · Hybrid search (BM25 + dense) · Reranking & cross-encoders · RAG evaluation (RAGAS, NDCG) · Agentic RAG · Graph RAG · Self-RAG & Corrective RAG · Multi-modal RAG · Text-to-SQL · Prompt injection & RAG security · Hallucination mitigation · LLM observability · Multi-tenancy & access control
+Embeddings · Chunking strategies · Vector databases (FAISS, Pinecone, Weaviate, pgvector) · Hybrid search (BM25 + dense) · Reranking & cross-encoders · RAG evaluation (RAGAS, NDCG) · Agentic RAG · Graph RAG · Self-RAG & Corrective RAG · Multi-modal RAG · Text-to-SQL · Prompt injection & RAG security · Hallucination mitigation · LLM observability · Multi-tenancy & access control · Knowledge graph construction · Semantic caching · Cost optimization · Privacy-preserving retrieval · Streaming / real-time indexing · Citation & attribution · ColBERT multi-vector retrieval
 
 ---
 
@@ -319,6 +386,6 @@ For issues, questions, or general feedback:
 [license-shield]: https://img.shields.io/github/license/ather-techie/rag-interview-questions
 [license-url]: LICENSE
 [commits-shield]: https://img.shields.io/github/last-commit/ather-techie/rag-interview-questions
-[questions-shield]: https://img.shields.io/badge/questions-429-blue
+[questions-shield]: https://img.shields.io/badge/questions-505-blue
 [prs-shield]: https://img.shields.io/badge/PRs-welcome-brightgreen
 [prs-url]: CONTRIBUTING.md

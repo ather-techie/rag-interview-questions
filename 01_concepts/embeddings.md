@@ -402,3 +402,23 @@ How embedding model choice affects different RAG architectures.
 3. **Domain mismatch is the #1 cause of RAG failures.** Test your embeddings on domain-specific queries early.
 4. **Fine-tuning requires 1K+ labeled pairs.** Start with zero-shot embeddings; only fine-tune if your NDCG@5 <0.75.
 5. **Embedding quality cascades.** Poor embeddings can't be fixed by better rerankers or LLMs. Fix retrieval first.
+
+---
+
+## Additional Interview Questions
+
+**Q: How do you handle queries in low-resource languages where your embedding model has poor coverage?**
+
+Several options depending on budget: (1) **Multilingual embedding model** — swap to `multilingual-e5-large`, `LaBSE`, or `multilingual-bge` which are trained on 100+ languages and maintain cross-lingual alignment (an English query can match a French document). Quality is lower than monolingual models for high-resource languages but acceptable for many use cases. (2) **Translate-then-embed** — translate the query to English using a translation API before embedding; only works if your corpus is in English. Simple and high quality but adds latency and API cost. (3) **Fine-tune a multilingual model** on domain-specific cross-lingual pairs if off-the-shelf multilingual quality is insufficient. Test on a held-out set in each target language to confirm adequate coverage before deploying.
+
+---
+
+**Q: What is the query-document asymmetry problem, and how do models like HyDE, INSTRUCTOR, and E5 address it?**
+
+**The problem:** Queries are short (3–15 words) and often keywords ("Python async error"), while documents are long and descriptive ("Python provides several mechanisms for asynchronous programming..."). Embedding both in the same space causes a distributional mismatch — the query vector rarely lands close to the document vector even when semantically relevant.
+
+**How each approach addresses it:**
+- **HyDE** (Hypothetical Document Embedding): generates a hypothetical full-text answer to the query, embeds *that* as the search vector. This puts the query in document-like distributional space. Risk: if the generated hypothesis is wrong, retrieval goes in the wrong direction.
+- **INSTRUCTOR**: trained with task-specific instructions prepended to inputs ("Represent this query for searching technical documents: ..."). The instruction shifts the embedding to match the target distribution.
+- **E5** (EmbEddings from bidirEctional Encoder rEpresentations): uses the prefix "query: " or "passage: " before text at both training and inference time, teaching the model that queries and passages should be handled differently even in the same embedding space.
+- **Asymmetric fine-tuning**: fine-tune with query–passage pairs using different prompts/prefixes for each side.

@@ -306,3 +306,17 @@ The principle to state: **authorization must be enforced at the last point where
 4. **Pre-filter inside the ANN search** and know the recall caveat for selective filters; post-filtering as a security boundary is fragile and leaks via counts and timing.
 5. **The vector store inherits the source data's classification** — embeddings are invertible, caches must be tenant- and permission-keyed, and citations leak too.
 6. **Log the filter you applied, not just the query** — blast-radius analysis and auditor evidence both depend on it.
+
+---
+
+## Additional Interview Questions
+
+**Q: How do you handle real-time permission changes — for example, a user loses access to a document mid-session?**
+
+This is the ACL staleness problem at its most acute. Three layers needed: (1) **Short TTL on permission caches** — if ACLs are cached in the retrieval layer, set TTL to the acceptable staleness window (5–60 seconds for sensitive data). Every cache read should touch the permission store if the cached entry is older than TTL. (2) **Late-binding check on the final top-k** — after retrieval, re-verify the user's current permissions for each document in the final result set against the authoritative permission store (SharePoint API, database), not the index metadata. This is slower but eliminates stale-cache false positives. (3) **Session invalidation** — when a permission change event fires (via webhook, CDC, or audit log), invalidate any active sessions for that user that may have a cached answer containing the now-revoked document's content. If using a semantic cache, flush all cache entries whose source document IDs include the revoked document. The combination of late-binding + session invalidation means a user who loses access mid-session will be blocked at the next query, not at the next session.
+
+---
+
+**Q: What are the security risks of using a semantic cache in a multi-tenant RAG system?**
+
+A semantic cache keyed only on query meaning — without a tenant or user scope — is a cross-tenant data leakage vector. If Tenant A asks "What is our Q3 revenue?" and the answer ($4.2M) is cached, Tenant B asking "Show me our Q3 revenue figures" may hit the cache and receive Tenant A's answer, since the query embeddings are semantically very close. Beyond the obvious: (1) **Timing side-channel** — a cache hit is 2ms vs. cache miss 200ms; Tenant B can infer whether a topic has been previously queried by another user just from response latency. (2) **Document-ID leakage in cache metadata** — implementations that cache retrieved chunk IDs alongside the answer expose which documents are relevant to a topic. (3) **Permission-change lag** — a cached answer may include content from a document that has since been classified as restricted; without permission-aware cache invalidation, the answer persists beyond the revocation. Mitigation: always namespace cache keys by tenant/user ID and include a hash of the user's current permission set in the key. See [09 — Semantic Cache Leakage](../03_failure_modes/09-semantic_cache_leakage.md).

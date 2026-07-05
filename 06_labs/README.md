@@ -1,24 +1,50 @@
-# 06 — Labs (Planned)
+# 06 — Labs
 
-> **Status:** Planned — not yet written. This stub describes what the section will contain so you know what's coming and where to contribute.
+> Hands-on Jupyter notebooks that turn Q&A knowledge into demonstrable, runnable skill. Each lab takes 30–60 minutes and includes a small bundled corpus.
 
-## What this section will cover
+## Contents
 
-Hands-on exercises that turn the Q&A knowledge into demonstrable skill:
+| Notebook | What You Build | Key Skills |
+|----------|---------------|-----------|
+| [01_naive_rag.ipynb](01_naive_rag.ipynb) | End-to-end naive RAG: chunk → embed → FAISS → Claude | Indexing pipeline, cosine retrieval, generation |
+| [02_hybrid_rag.ipynb](02_hybrid_rag.ipynb) | BM25 + dense retrieval merged with RRF | `rank_bm25`, FAISS, RRF formula, comparison vs. each alone |
+| [03_reranker_pipeline.ipynb](03_reranker_pipeline.ipynb) | Two-stage: bi-encoder → cross-encoder reranker | `CrossEncoder`, latency trade-off, rank change analysis |
+| [04_ragas_evaluation.ipynb](04_ragas_evaluation.ipynb) | Full eval harness: RAGAS + custom judges + regression detection | Golden datasets, RAGAS 4 metrics, LLM-as-judge, Recall@k |
 
-- **Build labs** — implement Naive RAG from scratch, add hybrid search, add a reranker; measure the recall/precision change at each step
-- **Debug labs** — intentionally broken pipelines reproducing the failure modes in [`03_failure_modes/`](../03_failure_modes/); your job is to diagnose and fix
-- **Evaluation labs** — build a golden dataset and wire RAGAS into a regression test
+## Prerequisites
 
-## Intended format
+```bash
+pip install rank-bm25 sentence-transformers faiss-cpu anthropic ragas langchain-anthropic datasets
+```
 
-Jupyter notebooks with a small bundled corpus, each lab ~30–60 minutes, solution notebooks separate.
+Set `ANTHROPIC_API_KEY` in your environment before running any notebook.
 
-## In the meantime
+## Lab Progression
 
-- Code snippets throughout [`01_concepts/`](../01_concepts/) are runnable starting points
-- The production readiness checklist in [`00_overview/roadmap.md`](../00_overview/roadmap.md) doubles as a lab syllabus
+```
+Lab 01 (Naive RAG)
+  └── Learn: indexing + retrieval + generation baseline
 
-## Contributing
+Lab 02 (Hybrid RAG)
+  └── Add: BM25 + RRF on top of Lab 01 dense index
+  └── Why: exact-match queries that dense alone misses
 
-See [CONTRIBUTING.md](../CONTRIBUTING.md).
+Lab 03 (Reranker)
+  └── Add: cross-encoder reranking on top of Lab 02 candidates
+  └── Why: rank precision when fast retrieval makes ordering mistakes
+
+Lab 04 (Evaluation)
+  └── Measure: RAGAS + Recall@k on Labs 01–03
+  └── Why: without measurement, improvement is guesswork
+```
+
+## Estimated Costs
+
+| Lab | API Calls | Est. Cost |
+|-----|-----------|-----------|
+| 01 | ~10 Claude calls | ~$0.002 |
+| 02 | ~5 Claude calls | ~$0.001 |
+| 03 | ~5 Claude calls | ~$0.001 |
+| 04 | ~50–80 RAGAS judge calls | ~$0.05 |
+
+All labs use `claude-haiku-4-5-20251001` except RAGAS evaluation (uses `claude-sonnet-5` as judge).

@@ -646,3 +646,17 @@ def late_chunk_embed(document: str, chunk_boundaries: list[tuple[int, int]]):
     
     return chunk_embeddings
 ```
+
+---
+
+## Additional Interview Questions
+
+**Q: How do you chunk code files vs. prose documents?**
+
+Prose uses linguistic boundaries (sentences, paragraphs); code has semantic boundaries defined by its AST (Abstract Syntax Tree). For code: (1) **Function/method level** is the natural chunk unit — one function per chunk preserves the callable signature, docstring, and body as a unit. (2) **Class level** for small classes; split large classes by methods. (3) Use language-specific parsers (`tree-sitter`, Python's `ast` module) to extract exact boundary positions rather than splitting on newlines — a newline mid-expression is not a semantic boundary. (4) Preserve the full function signature even when the body is truncated (for long functions). (5) For file-level context (imports, class hierarchy), prepend a "file header" context block to each chunk similar to Contextual Retrieval. Never use fixed-character chunking for code — it will split in the middle of function signatures and break semantics.
+
+---
+
+**Q: How would you chunk a 200-page PDF financial report with mixed text, tables, and charts?**
+
+A mixed-content PDF requires content-type-aware chunking rather than a single strategy: (1) **Detect content types** — use pdfplumber or PyMuPDF to identify text regions, table bounding boxes, and image regions separately. (2) **Text sections**: chunk by section headers (H1/H2 boundaries if detectable); within sections, use paragraph or sentence boundaries with 20% overlap. (3) **Tables**: extract with camelot or pdfplumber's table extractor; serialize as Markdown (column headers + rows); store as single chunks keyed by table title or position. Do not mix table rows with surrounding prose — they have different embedding characteristics. (4) **Charts/figures**: use a vision model (GPT-4V, Claude Sonnet) to generate a text description of each chart; embed the description, not the image. (5) **Cross-reference metadata**: tag each chunk with page number, section title, and document name — financial reports are often queried by section ("page 47, liquidity risk").

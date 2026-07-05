@@ -390,3 +390,17 @@ When first deploying any vector DB, set these in order:
 3. **RRF is the gold standard** for merging dense + sparse results.
 4. **Pre-filter when possible**, but measure recall impact.
 5. **Start with a managed service** (Pinecone) if you're unsure. Migrate to self-hosted later.
+
+---
+
+## Additional Interview Questions
+
+**Q: How would you design the vector DB layer for a RAG system handling 1 billion documents?**
+
+At 1B vectors, three changes are mandatory: (1) **Quantization** — use IVF+PQ (Product Quantization) to compress each vector from 768 × 4 bytes = 3KB to ~96 bytes (32× compression with 8-bit PQ). Without compression, 1B vectors require ~3 TB of RAM — impossible on a single machine. (2) **Sharding** — partition the index across multiple nodes. Shard by document type, time range, or a hash of the document ID. At query time, fan out to all shards and merge results with RRF. (3) **Tiered storage** — keep the hot index (recent documents, frequently accessed) in memory; cold segments on NVMe SSD with demand loading. At 1B scale, managed services (Pinecone, Weaviate Cloud) become prohibitively expensive; self-hosted Milvus with GPU indexing or FAISS on a fleet of CPU/GPU machines is the standard choice. Plan for 48–72 hours to build the full index from scratch; use incremental indexing for ongoing updates.
+
+---
+
+**Q: What is the cold-start problem in vector DB index warm-up and how do you mitigate it?**
+
+After a service restart or new node addition, the HNSW graph must be loaded from disk into RAM before it can serve fast ANN queries. Until warm-up completes, queries fall back to slow linear scan or fail entirely — this is the cold-start problem. Mitigations: (1) **Pre-warm on startup** — load and run a set of probe queries after index load to populate OS page cache and HNSW graph traversal paths before the service starts accepting traffic. (2) **Read replicas** — never restart the primary index node; scale by adding replicas while keeping at least one warm replica live. (3) **Memory-lock the index** (`mlock` on Linux) to prevent the OS from paging out the index under memory pressure. (4) **Index snapshotting** — checkpoint the loaded (not just serialized) index state so restart resumes from an in-memory snapshot rather than deserializing from scratch. Qdrant and Milvus both support memory-mapped files (`mmap`) that let the OS page index segments in lazily, reducing the hard blocking period at startup.

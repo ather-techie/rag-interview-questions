@@ -506,3 +506,23 @@ results = RAG.search(query="Python memory leak in Django", k=5)
 - **Storage:** A 1M-document corpus with avg 100 tokens/doc requires ~150B vectors. At 128 dims × 2 bytes = 256 bytes/vector: ~38 TB. Compression (scalar quantization) brings this to ~5–10 TB — significant but feasible for high-value use cases.
 - **Latency:** ColBERT with PLAID (efficient indexing) achieves <100ms for 1M docs. Vanilla ColBERT is slower.
 - **Quality ceiling:** On benchmarks where a good reranker closes the gap (general domain), the storage and latency cost of ColBERT may not be worth it. On specialized domains without large reranker training data, ColBERT's advantage persists.
+
+---
+
+## Additional Interview Questions
+
+**Q: How do you handle conflicting information across retrieved passages?**
+
+First, detect the conflict: check whether multiple passages make contradictory factual claims about the same subject (NLI-based contradiction detection, or simply prompting the LLM). Handling options: (1) **Merge with attribution** — present all conflicting claims, each with its source, and let the LLM or the user decide; (2) **Majority vote** — if 3 passages agree and 1 disagrees, prefer the majority position and flag the minority; (3) **Confidence weighting** — prefer passages from more recent documents or higher-authority sources (journal papers > blog posts); (4) **Abstain** — for high-stakes domains (medical, legal), if passages conflict, surface the conflict explicitly rather than picking a side. Never silently resolve a conflict by choosing one passage arbitrarily.
+
+---
+
+**Q: How does retrieval change for multi-document synthesis queries vs. single-fact lookup?**
+
+Single-fact lookup: precision matters most — retrieve the one most relevant chunk, use a high similarity threshold, and prefer reranking to push the exact answer to the top. Multi-document synthesis (e.g., "Compare the approaches taken by these three papers"): recall and diversity matter more — use MMR to avoid redundant chunks from the same document, retrieve a larger k (10–20 instead of 3–5), lower the similarity threshold to capture different perspectives, and pass multiple documents explicitly labeled to the LLM. The generation prompt also changes: "Synthesize across the following documents" rather than "Answer using the following passage."
+
+---
+
+**Q: How would you design retrieval for a corpus of billions of documents?**
+
+A billion-document corpus requires a two-tier retrieval architecture: (1) **Coarse retrieval** — use a combination of BM25 (inverted index, scales to any size) and IVF+PQ quantized dense embeddings to retrieve a candidate set of ~1000–10000 documents from the full corpus. Partition the index (by topic, date, or document type) and route queries to the relevant shard. (2) **Fine-grained re-ranking** — apply a cross-encoder or ColBERT reranker over the candidate set. At this scale, self-hosted FAISS with IVF+PQ (128-dim quantized to 8 bits) is essential — managed services like Pinecone are prohibitively expensive at 1B+ vectors. Use hierarchical navigable small world (HNSW) within each partition for speed, and distribute shards across multiple machines.

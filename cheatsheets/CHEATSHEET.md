@@ -33,6 +33,18 @@
 | 27 | **RETRO** *(training-time)* | Chunked cross-attention over a trillion-token frozen datastore | Parameter-efficient LMs; large-scale knowledge LM | Most apps without trillion-scale datastore infra |
 | 28 | **Atlas** *(training-time)* | Jointly-trained Contriever + FiD, attention-distillation | Few-shot knowledge tasks with scarce labels | When strong LLM + inference-time RAG already suffices |
 | 29 | **Fusion-in-Decoder (FiD)** *(training-time)* | Encode each passage separately, fuse in the decoder | Generative reading/fusing of many retrieved passages | Single-passage reads; very tight decoder-latency budgets |
+| 30 | **ColRAG / ColBERT** | Multi-vector late interaction — one embedding per token, MaxSim scoring | Hard retrieval, domain-specific vocabulary, sub-100ms precision | Storage-constrained (index is 10–30× larger than single-vector); already using a reranker |
+| 31 | **Agentic Web RAG** | Live web search as retrieval backend — fetch, extract, cite pages in real time | Queries about recent events; no pre-built corpus; general-purpose assistants | Latency < 500ms; sensitive/regulated data; deterministic answers required |
+| 32 | **Few-Shot Example RAG** | Retrieve (query, answer) demonstration pairs instead of documents | Code generation with project style, structured output, text-to-SQL | Factual Q&A where document content (not format) is what's needed |
+| 33 | **Verifiable / Citation RAG** | Every claim linked to a specific passage + NLI-based attribution verification | Legal, medical, compliance contexts requiring auditable answers | Casual Q&A where citation overhead is unnecessary |
+| 34 | **Privacy-Preserving RAG** | On-device embedding, DP noise on query vectors, federated retrieval across data silos | Regulated industries (HIPAA, GDPR); zero-trust retrieval; cross-org federated search | Low-sensitivity public corpora where data minimization is not required |
+| 35 | **Streaming / Real-Time RAG** | Continuous Kafka/CDC event stream → micro-batch embed → upsert; freshness window in seconds | News, financial data, live support docs; any corpus where staleness > 30s is unacceptable | Stable, infrequently-updated corpora where batch reindex works fine |
+| 36 | **Table-Aware RAG** | Table extraction → row-level chunking with column headers → numerical-query boosted retrieval | Financial reports, scientific data, HTML tables, multi-column PDFs with structured data | Pure prose documents; relational databases (use Structured RAG instead) |
+| 37 | **Tree of Thought RAG** | Generate N thought branches → retrieve targeted evidence per branch → score and prune → synthesize best path | Queries with competing hypotheses (diagnostics, root cause analysis, multi-interpretation) | Simple factual queries; latency-sensitive applications (15–60s per query) |
+| 38 | **DPR (Dense Passage Retrieval)** | Bi-encoder trained with contrastive loss on (question, passage) pairs; offline passage indexing in FAISS | Foundational architecture; learning fine-grained semantic retrieval; custom bi-encoder training | When off-the-shelf embedding models (BGE, E5) already meet recall requirements |
+| 39 | **WebGPT / Tool-Augmented LM** | LLM trained via RLHF to issue browser actions (search/click/quote) as first-class learned operations | When prompting-based tool use is unreliable; narrow/stable tool space; verification signal available | Rapidly evolving tool space; prompting already reliable; training cost is prohibitive |
+| 40 | **SURGE (Schema-Grounded RAG)** | Schema-constrained generation via tool_use + per-field NLI grounding verification before delivery | ETL from documents, compliance reports, database population — any structured output needing per-field auditability | Conversational/advisory output where field-level traceability is unnecessary |
+| 41 | **Recursive Document Summarization RAG** | Multi-level summary tree (chunk → section → document → corpus) built offline; query routing selects the right abstraction level at inference | Large documents navigated at multiple granularities (annual reports, contracts); "what does section 3 say?" | Cross-document thematic queries (use RAPTOR instead); small corpora |
 
 ---
 
@@ -72,6 +84,18 @@ Relative ratings for a typical mid-size deployment (●○○ low → ●●● 
 | RETRO | ●●○ | ●●○ | ●●● | ●●● | Per-chunk retrieval + huge frozen datastore storage/serving |
 | Atlas | ●●○ | ●●○ | ●●● | ●●● | Joint training + index refresh; FiD encoder cost linear in passages |
 | Fusion-in-Decoder | ●●○ | ●●○ | ●●○ | ●●○ | Decoder cross-attention over all passage tokens (grows with k) |
+| ColRAG / ColBERT | ●●○ | ●○○ | ●●○ | ●●○ | Large token-level index storage; fast MaxSim at query time |
+| Agentic Web RAG | ●●● | ●●● | ●●○ | ●●○ | Search API + page fetch latency; multiple LLM calls for multi-step |
+| Few-Shot Example RAG | ●○○ | ●○○ | ●●○ | ●○○ | Example embedding at index time; retrieval same cost as dense RAG |
+| Verifiable / Citation RAG | ●●○ | ●●○ | ●●○ | ●●○ | NLI verification pass per claim adds latency and compute |
+| Privacy-Preserving RAG | ●●○ | ●●○ | ●●● | ●●● | DP noise embedding + federated retrieval coordination overhead |
+| Streaming / Real-Time RAG | ●●○ | ●○○ | ●●● | ●●● | Kafka/CDC infra + always-on consumer; embedding is micro-batched |
+| Table-Aware RAG | ●●○ | ●●○ | ●●○ | ●●○ | Table parsing + row-level embedding at index time; reranker boost at query time |
+| Tree of Thought RAG | ●●● | ●●● | ●●● | ●●● | 15–50 LLM calls per query (thought gen + eval + retrieval per branch) |
+| DPR | ●○○* | ●○○ | ●●● | ●●○ | *Up-front contrastive training; inference is standard bi-encoder retrieval |
+| WebGPT / Tool-Augmented LM | ●●●* | ●●● | ●●● | ●●● | *RLHF pipeline is expensive; inference is multi-step browsing with LLM calls |
+| SURGE | ●●○ | ●●○ | ●●○ | ●●○ | Tool-use generation + NLI verification pass per field; LLM call per extracted object |
+| Recursive Summary RAG | ●●○* | ●○○ | ●●○ | ●●○ | *Up-front Haiku summarization per section/document; query-time routing is a single cheap Haiku call |
 
 ---
 
@@ -86,6 +110,8 @@ Relative ratings for a typical mid-size deployment (●○○ low → ●●● 
 | Answers degrade as k or doc size grows | Context overflow → truncation or lost-in-the-middle | Rerank then cut to top 3–5; compress context | [Context Overflow](../03_failure_modes/05-context_window_overflow.md) |
 | Good docs retrieved but ranked below junk | Reranker domain mismatch or score miscalibration | Evaluate reranker on domain pairs; swap or fine-tune | [Reranker Failure](../03_failure_modes/06-reranker_failure.md) |
 | Multi-turn answers degrade; wrong context retrieved after topic change or pronoun use | Conversation history poisons the retrieval query (coreference, implicit carry-over) | Query condensation: rewrite history + new turn into a standalone query before retrieval | [Conversational Context Drift](../03_failure_modes/07-conversational_context_drift.md) |
+| Multi-hop chain produces confident but completely wrong answer; error invisible to the LLM | HyDE/expansion generated a wrong hypothesis; wrong first hop propagated through all subsequent hops | Re-anchor each hop against the original query; add semantic-drift circuit breaker | [Cascading Retrieval Failure](../03_failure_modes/08-cascading_retrieval_failure.md) |
+| Tenant B receives Tenant A's financial or confidential data via RAG response | Semantic cache keyed only on query meaning — no tenant namespace; semantically similar queries across tenants collide | Namespace all semantic cache keys by tenant_id (or permission-hash) | [Semantic Cache Leakage](../03_failure_modes/09-semantic_cache_leakage.md) |
 
 ---
 

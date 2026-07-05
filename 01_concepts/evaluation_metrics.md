@@ -551,3 +551,103 @@ def log_rag_metrics(query: str, retrieved_docs: list, answer: str):
 3. **RAGAS is gold standard** for generation evaluation (no gold labels needed).
 4. **Always have a labeled probe set.** 50–100 representative queries minimum.
 5. **Divergence between metrics signals problems.** High recall + low faithfulness = fix the prompt, not retrieval.
+
+---
+
+## Additional Interview Questions
+
+**Q: How do you evaluate RAG for subjective or open-ended questions where there is no single correct answer?**
+
+When there is no ground-truth answer string (e.g., "What are the pros and cons of HNSW vs. IVF?"), automated exact-match metrics are useless. Use two complementary approaches:
+
+**LLM-as-Judge with a rubric**: define explicit evaluation dimensions (relevance, completeness, accuracy, citation quality) and have a strong LLM (GPT-4 / Claude Sonnet) score each response on those dimensions. The rubric forces reproducibility and explains variance.
+
+```python
+import anthropic
+import json
+
+client = anthropic.Anthropic()
+
+JUDGE_PROMPT = """You are an expert evaluator for RAG system outputs.
+Score the response on each dimension from 1-5:
+  - relevance: Does the response address the question?
+  - completeness: Are important aspects covered?
+  - accuracy: Is the information factually correct based on the context provided?
+  - citation_quality: Are claims grounded in the retrieved context?
+
+Output JSON: {"relevance": 1-5, "completeness": 1-5, "accuracy": 1-5, "citation_quality": 1-5, "reasoning": "..."}"""
+
+def llm_judge(question: str, context: str, response: str) -> dict:
+    resp = client.messages.create(
+        model="claude-sonnet-5",
+        max_tokens=512,
+        system=JUDGE_PROMPT,
+        messages=[{"role": "user", "content":
+            f"Question: {question}\n\nRetrieved context:\n{context}\n\nResponse:\n{response}"}],
+    )
+    return json.loads(resp.content[0].text)
+```
+
+**Pairwise preference**: present two responses (baseline vs. new system) to a judge model and ask which is better overall. Pairwise judgments are more reliable than absolute scores because they anchor the judge to a concrete comparison.
+
+```python
+PAIRWISE_PROMPT = """Given a question, two responses (A and B), and reference context, which response is better?
+Consider: accuracy, completeness, groundedness in context.
+Output JSON: {"winner": "A" or "B" or "tie", "reasoning": "..."}"""
+
+def pairwise_eval(question: str, context: str, response_a: str, response_b: str) -> dict:
+    resp = client.messages.create(
+        model="claude-sonnet-5",
+        max_tokens=256,
+        system=PAIRWISE_PROMPT,
+        messages=[{"role": "user", "content":
+            f"Question: {question}\nContext: {context}\nResponse A: {response_a}\nResponse B: {response_b}"}],
+    )
+    return json.loads(resp.content[0].text)
+```
+
+Key calibration requirement: always include human-labeled examples (with known correct answers) in your judge's few-shot prompt. Without calibration, LLM judges develop systematic biases (length preference, verbosity, position bias for "A" responses).
+
+---
+
+**Q: What metrics would you use to evaluate citation quality in a verifiable RAG system?**
+
+Citation quality has three distinct failure modes, each requiring a separate metric:
+
+1. **Citation Precision** — of the passages cited, what fraction actually support the claim?
+   - A response cites 5 passages but only 3 are relevant → precision = 0.6
+   - Metric: NLI entailment score between cited passage and the specific claim it supports
+
+2. **Citation Recall** — of the claims made, what fraction have at least one supporting citation?
+   - The response makes 4 claims but only 3 have a citation → recall = 0.75
+   - Metric: count claims (using an LLM to segment into atomic claims) and check coverage
+
+3. **Attribution Accuracy** — does the cited passage actually say what the response claims it says?
+   - Distinct from hallucination detection (which checks if *any* passage supports the claim)
+   - Uses NLI: does the cited passage entail the specific claim?
+
+```python
+from transformers import pipeline
+
+nli = pipeline("text-classification", model="cross-encoder/nli-deberta-v3-base")
+
+def citation_precision(claims_with_citations: list[dict]) -> float:
+    """
+    claims_with_citations: [{"claim": "...", "cited_passage": "..."}]
+    """
+    supported = 0
+    for item in claims_with_citations:
+        premise    = item["cited_passage"]
+        hypothesis = item["claim"]
+        result     = nli(f"{premise} [SEP] {hypothesis}")[0]
+        if result["label"] == "ENTAILMENT" and result["score"] > 0.7:
+            supported += 1
+    return supported / len(claims_with_citations) if claims_with_citations else 0.0
+
+def citation_recall(all_claims: list[str], cited_claims: list[str]) -> float:
+    cited_set = set(cited_claims)
+    covered   = sum(1 for c in all_claims if c in cited_set)
+    return covered / len(all_claims) if all_claims else 0.0
+```
+
+The **ALCE benchmark** (Gao et al., 2023) provides standardized evaluation for citation quality including both precision and recall. For production systems, track citation precision as a primary SLO (target ≥ 0.85) and alert when it drops below 0.7 — that signals the retrieval quality has degraded to the point where the model is citing irrelevant passages to appear grounded.

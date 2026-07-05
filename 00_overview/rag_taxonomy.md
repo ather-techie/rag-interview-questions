@@ -1,6 +1,6 @@
 # RAG Taxonomy: Classification and Architecture Mapping
 
-> All 29 RAG architectures mapped by mechanism, data source, retrieval control, and production fit.
+> All 41 RAG architectures mapped by mechanism, data source, retrieval control, and production fit.
 
 ---
 
@@ -33,7 +33,7 @@ Each axis maps to a different set of failure modes and trade-offs. Mastering the
 
 ---
 
-## The Full Taxonomy: All 29 Architectures
+## The Full Taxonomy: All 41 Architectures
 
 | Architecture | Retrieval Control | Data Modality | Feedback Loop | Scope | Fine-tune Required? | Latency Class | Production Maturity |
 |---|---|---|---|---|---|---|---|
@@ -67,8 +67,21 @@ Each axis maps to a different set of failure modes and trade-offs. Mastering the
 | RETRO †| Static (frozen) | Text-only | None | Per-chunk | **Yes** | Medium (200ms–1s) | Foundational (2021) |
 | Atlas †| Static (learned) | Text-only | None | Single-hop | **Yes** | Medium (200ms–1s) | Foundational (2022) |
 | Fusion-in-Decoder †| Static | Text-only | None | Single-hop (many passages) | **Yes** (reader) | Medium (200ms–1s) | Foundational (2020) |
+| ColRAG / ColBERT | Static | Text-only | None | Single-hop | No | Fast (<200ms) | Stable (2020+) |
+| Agentic Web RAG | Agent-driven | Text-only (live web) | Self-critique (optional) | Multi-hop | No | Slow (>1s) | Stable (2023+) |
+| Few-Shot Example RAG | Static | Text-only | None | Single-hop | No | Fast (<200ms) | Stable (growing) |
+| Verifiable / Citation RAG | Static | Text-only | Self-critique (attribution) | Single-hop | No | Medium (200ms–1s) | Emerging (2023+) |
+| Privacy-Preserving RAG | Static | Text-only | None | Single-hop | No | Medium (200ms–1s) | Emerging (2024+) |
+| Streaming / Real-Time RAG | Dynamic | Text-only | None | Single-hop | No | Fast (<200ms) | Stable (growing) |
+| Table-Aware RAG | Static | Structured (tables in docs) | None | Single-hop | No | Medium (200ms–1s) | Emerging (2023+) |
+| Tree of Thought RAG | Agent-driven | Text-only | Self-critique | Multi-hop (tree) | No | Slow (>1s) | Research-frontier (2024+) |
+| DPR (Dense Passage Retrieval) | Static (learned) | Text-only | None | Single-hop | **Yes** | Fast (<200ms) | Foundational (2020) |
+| WebGPT / Tool-Augmented LM | Agent-driven | Text-only (live web) | Self-critique | Multi-hop | **Yes** (RLHF) | Slow (>1s) | Foundational (2021) |
+| SURGE (Schema-Grounded RAG) | Static | Text-only | Self-critique (NLI) | Single-hop | No | Medium (200ms–1s) | Emerging (2024+) |
+| Recursive Document Summarization RAG | Static | Text-only | None | Multi-hop (tree) | No | Fast (<200ms) | Emerging (2024+) |
 
 \* Query-time latency is low; HippoRAG and CAG pay a large up-front (index-build / KV-cache) cost instead.
+‡ DPR is also a training-time architecture but is listed separately as the foundational bi-encoder retrieval model rather than a full RAG pipeline.
 † **Training-time / parametric** architectures: retrieval is integrated into pre-training or the model architecture (and the retriever/reader is trained), rather than bolted on at inference. They form a distinct branch from the inference-time architectures above.
 
 ---
