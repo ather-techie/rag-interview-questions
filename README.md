@@ -10,10 +10,10 @@
 
 
 <p align="center">
-  <img src="assets/logos/image.png" alt="RAG (Retrieval-Augmented Generation) Interview Questions and Answers — 418 Q&A covering 29 architectures and production failure modes" width="800" />
+  <img src="assets/logos/image.png" alt="RAG (Retrieval-Augmented Generation) Interview Questions and Answers — 429 Q&A covering 29 architectures and production failure modes" width="800" />
 </p>
 
-**418 RAG (Retrieval-Augmented Generation) interview questions and answers** for AI engineers, ML engineers, and GenAI/LLM developers. Covers all 29 RAG architectures, system design scenarios, vector databases, embeddings, chunking, reranking, evaluation, and the production failure modes that come up in real LLM engineering interviews.
+**429 RAG (Retrieval-Augmented Generation) interview questions and answers** for AI engineers, ML engineers, and GenAI/LLM developers. Covers all 29 RAG architectures, system design scenarios, vector databases, embeddings, chunking, reranking, evaluation, and the production failure modes that come up in real LLM engineering interviews.
 
 ⭐ **Star this repo** if it helps your interview prep — it keeps the project growing.
 
@@ -38,22 +38,25 @@
 
 ### 📖 Overview & Concepts
 
-| # | Topic | Purpose |
-|---|-------|---------|
-| 00a | [Roadmap](./00_overview/roadmap.md) | RAG maturity model, skill progression, and interview prep pathway |
-| 00b | [RAG Taxonomy](./00_overview/rag_taxonomy.md) | Classification framework for all 29 architectures |
-| 00c | [Learning Path](./00_overview/learning_path.md) | Structured curriculum and study plans |
-| 00d | [System Design Principles](./00_overview/system_design_principles.md) | Production-grade architecture patterns |
-| 01a | [Embeddings](./01_concepts/embeddings.md) | Embedding models, similarity metrics, and fine-tuning |
-| 01b | [Chunking Strategies](./01_concepts/chunking_strategies.md) | Document splitting and chunk optimization |
-| 01c | [Vector Databases](./01_concepts/vector_databases.md) | Storage, indexing, and hybrid search |
-| 01d | [Retrieval Strategies](./01_concepts/retrieval_strategies.md) | Dense, sparse, hybrid, and advanced retrieval |
-| 01e | [Reranking](./01_concepts/reranking.md) | Cross-encoders and precision filtering |
-| 01f | [Evaluation Metrics](./01_concepts/evaluation_metrics.md) | RAGAS, NDCG, and production monitoring |
-| 01g | [Prompt Injection Risks](./01_concepts/prompt_injection_risks.md) | Security and defense strategies |
-| 01h | [Fine-Tuning for RAG](./01_concepts/fine_tuning.md) | When and how to fine-tune embeddings and rerankers |
-| 01i | [Observability & Evaluation Ops](./01_concepts/observability_and_evaluation_ops.md) | LLM-as-judge, online metrics, tracing, drift alerts |
-| 01j | [Multi-Tenancy & Access Control](./01_concepts/multi_tenancy_access_control.md) | Tenant isolation, document ACLs, leakage surfaces |
+| # | Topic | Purpose | Questions |
+|---|-------|---------|-----------|
+| 00a | [Roadmap](./00_overview/roadmap.md) | RAG maturity model, skill progression, and interview prep pathway | – |
+| 00b | [RAG Taxonomy](./00_overview/rag_taxonomy.md) | Classification framework for all 29 architectures | – |
+| 00c | [Learning Path](./00_overview/learning_path.md) | Structured curriculum and study plans | – |
+| 00d | [System Design Principles](./00_overview/system_design_principles.md) | Production-grade architecture patterns | – |
+| 01a | [Embeddings](./01_concepts/embeddings.md) | Embedding models, similarity metrics, and fine-tuning | 1 |
+| 01b | [Chunking Strategies](./01_concepts/chunking_strategies.md) | Document splitting and chunk optimization | 1 |
+| 01c | [Vector Databases](./01_concepts/vector_databases.md) | Storage, indexing, and hybrid search | 1 |
+| 01d | [Retrieval Strategies](./01_concepts/retrieval_strategies.md) | Dense, sparse, hybrid, and advanced retrieval | 1 |
+| 01e | [Reranking](./01_concepts/reranking.md) | Cross-encoders and precision filtering | 1 |
+| 01f | [Evaluation Metrics](./01_concepts/evaluation_metrics.md) | RAGAS, NDCG, and production monitoring | 1 |
+| 01g | [Prompt Injection Risks](./01_concepts/prompt_injection_risks.md) | Security and defense strategies | 1 |
+| 01h | [Fine-Tuning for RAG](./01_concepts/fine_tuning.md) | When and how to fine-tune embeddings and rerankers | 1 |
+| 01i | [Observability & Evaluation Ops](./01_concepts/observability_and_evaluation_ops.md) | LLM-as-judge, online metrics, tracing, drift alerts | 1 |
+| 01j | [Multi-Tenancy & Access Control](./01_concepts/multi_tenancy_access_control.md) | Tenant isolation, document ACLs, leakage surfaces | 1 |
+| 01k | [Document Ingestion & Parsing](./01_concepts/document_ingestion_and_parsing.md) | Parsing pipelines, layout extraction, and text normalization | 1 |
+
+**Core Concepts Total: 11 questions**
 
 ### ❓ RAG Architecture Interview Questions (29 Types)
 
@@ -105,7 +108,7 @@
 
 **Failure Modes Total: 70 questions**
 
-**Grand Total: 418 questions**
+**Grand Total: 429 questions**
 
 **Difficulty distribution: ~41 Basic, ~154 Intermediate, ~223 Advanced**
 
@@ -249,8 +252,9 @@ Conversational Context Drift  [NEW]
 
 **Four content types:**
 
-1. **Overview & Concepts (00_overview/, 01_concepts/)** — Reference material, not Q&A
+1. **Overview & Concepts (00_overview/, 01_concepts/)** — Reference material, mostly not Q&A
    - Read these first to build foundational understanding
+   - Each file in 01_concepts/ opens with a plain "What is X?" definition before going deep
    - Comparison tables, ASCII diagrams, code examples, and system design patterns
    - Use to answer conceptual questions and understand mechanisms deeply
 
@@ -315,6 +319,6 @@ For issues, questions, or general feedback:
 [license-shield]: https://img.shields.io/github/license/ather-techie/rag-interview-questions
 [license-url]: LICENSE
 [commits-shield]: https://img.shields.io/github/last-commit/ather-techie/rag-interview-questions
-[questions-shield]: https://img.shields.io/badge/questions-286-blue
+[questions-shield]: https://img.shields.io/badge/questions-429-blue
 [prs-shield]: https://img.shields.io/badge/PRs-welcome-brightgreen
 [prs-url]: CONTRIBUTING.md

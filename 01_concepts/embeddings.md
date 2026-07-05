@@ -4,6 +4,12 @@
 
 ---
 
+## What is an Embedding?
+
+An embedding is a dense numerical vector that represents a piece of text (or image, audio, etc.) such that texts with similar meaning end up close together in vector space. Instead of matching on exact keywords, an embedding model lets you compare meaning: a query and a document can be judged "similar" by measuring the distance between their vectors. This is what makes semantic search — and therefore retrieval in RAG — possible at all.
+
+---
+
 ## What an Embedding Model Learns
 
 An embedding model maps text → dense vectors such that semantically similar texts are geometrically close. This property enables retrieval by similarity.

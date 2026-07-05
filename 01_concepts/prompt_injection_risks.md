@@ -4,6 +4,12 @@
 
 ---
 
+## What is Prompt Injection (in RAG)?
+
+Prompt injection in RAG is an attack where malicious instructions are hidden inside content that gets retrieved and passed to the LLM — a poisoned document, webpage, or email — and the model follows those instructions as if they came from the trusted system prompt or user. It's a distinct risk in RAG systems specifically because retrieved content is, by default, treated as trusted context, even though it can come from sources an attacker controls.
+
+---
+
 ## The Injection Surface in RAG
 
 RAG systems are uniquely vulnerable to prompt injection because they ingest third-party content into the prompt at runtime.

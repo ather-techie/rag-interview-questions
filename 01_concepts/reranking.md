@@ -4,6 +4,12 @@
 
 ---
 
+## What is Reranking?
+
+Reranking is a second-stage step that takes the initial set of candidates returned by a fast, approximate retriever and re-scores them with a slower but more accurate model — usually a cross-encoder that looks at the query and each candidate together, rather than comparing pre-computed vectors independently. The goal is to fix the ordering: the first-stage retriever is optimized for speed and recall, and reranking trades a little latency for a lot more precision by pushing the truly relevant results to the top.
+
+---
+
 ## Why Reranking Exists
 
 The core compromise in bi-encoder dense retrieval: it's fast but approximate. You retrieve 50 candidates to find 5 truly relevant documents. Reranking fixes this.

@@ -4,6 +4,12 @@
 
 ---
 
+## What is Document Ingestion?
+
+Document ingestion is the pipeline step that takes raw source files — PDFs, HTML pages, Word docs, scanned images — and converts them into clean, structured text that a RAG system can actually chunk and embed. It handles parsing file formats, extracting text from layouts like tables and multi-column pages, and normalizing the result into a consistent representation. Because every downstream step depends on this text being accurate, ingestion quality puts a ceiling on how good retrieval can ever be.
+
+---
+
 ## Why Ingestion Is the Foundation
 
 The retrieval and generation layers are only as good as what's been indexed. Ingestion covers the full pipeline from raw data sources to clean, structured text ready for chunking:

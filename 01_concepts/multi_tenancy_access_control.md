@@ -4,6 +4,12 @@
 
 ---
 
+## What is Multi-Tenancy (in RAG)?
+
+Multi-tenancy in RAG means the system serves multiple users, customers, or organizations from a shared index while making sure each one only ever retrieves documents they're authorized to see. Because retrieval is a read path into everything you've indexed, without proper tenant isolation and document-level access control, a query from one user could surface another user's private data — turning a retrieval bug into a data breach.
+
+---
+
 ## Why Access Control Is Harder in RAG Than in Search
 
 A traditional database query touches rows the caller is explicitly authorized to read. A RAG query does something more dangerous: it takes *any* natural-language input and returns the semantically closest content from the *entire index* — then paraphrases it through an LLM. If the index contains documents the user shouldn't see, similarity search will happily surface them.

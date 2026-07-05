@@ -6,6 +6,12 @@ This file covers the *operational* side of evaluation: LLM-as-judge patterns, on
 
 ---
 
+## What is Observability (in RAG)?
+
+Observability is the practice of continuously monitoring a live RAG system's real-world behavior — tracing individual requests, tracking online quality signals, and alerting on drift — rather than relying only on offline benchmark scores computed before deployment. Offline metrics tell you a change looked good in the lab; observability tells you whether it's still holding up in production with real users and real data, days or weeks later.
+
+---
+
 ## The Production Evaluation Loop
 
 Offline evaluation is a gate; online evaluation is a feedback loop. A production RAG system needs both, connected.

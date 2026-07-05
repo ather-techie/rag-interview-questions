@@ -4,6 +4,12 @@
 
 ---
 
+## What is Retrieval (in RAG)?
+
+Retrieval is the step in a RAG pipeline that takes a user's query and returns the most relevant chunks or documents from an index to ground the LLM's answer. The simplest form is top-k cosine similarity search over embeddings, but "retrieval" in practice covers a much wider toolbox — hybrid search, query rewriting, multi-vector methods, and more — chosen based on what actually improves relevance for a given use case.
+
+---
+
 ## Retrieval as a Ranking Problem
 
 Retrieval is not search. It's **ranking**: given a corpus and a query, surface the most relevant context within a latency budget.

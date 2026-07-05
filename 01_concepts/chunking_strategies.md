@@ -4,6 +4,12 @@
 
 ---
 
+## What is Chunking?
+
+Chunking is the process of splitting a document into smaller, self-contained pieces before it gets embedded and indexed, so retrieval can return a focused, relevant snippet instead of an entire document. Every RAG pipeline chunks somewhere between ingestion and embedding — the only question is how. The size and boundaries you choose directly shape what a query can find: chunk too large and you dilute relevance with unrelated text; chunk too small and you lose the surrounding context needed to make sense of the snippet.
+
+---
+
 ## Why Chunking Exists
 
 Embedding models truncate long sequences. Most are trained on context windows of 512–8192 tokens. When you pass a longer document, two things happen:

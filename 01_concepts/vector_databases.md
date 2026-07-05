@@ -4,6 +4,12 @@
 
 ---
 
+## What is a Vector Database?
+
+A vector database is a storage system purpose-built to hold embeddings and quickly find the ones most similar to a given query vector, typically using approximate nearest-neighbor (ANN) indexing rather than brute-force comparison. It's the component that sits between "I have millions of embedded chunks" and "give me the top-k most relevant ones in milliseconds." Beyond raw similarity search, most vector databases also handle metadata filtering, hybrid (keyword + vector) search, and horizontal scaling as your index grows.
+
+---
+
 ## What a Vector Database Does
 
 A vector database has three responsibilities:

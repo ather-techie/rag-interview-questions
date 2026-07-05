@@ -6,6 +6,12 @@
 
 ---
 
+## What are Evaluation Metrics (in RAG)?
+
+Evaluation metrics are the quantitative measures used to judge whether a RAG system's retrieval and generation are actually good — things like Precision@k and Recall@k for whether the right chunks were retrieved, NDCG and MRR for whether they were ranked well, and answer-quality metrics like RAGAS or BERTScore for the final generated response. Without them, changes to chunking, retrieval, or prompting are just guesses; metrics turn "this feels better" into something you can measure and compare.
+
+---
+
 ## The Two Evaluation Planes
 
 RAG systems have two quality stages. You must measure both.

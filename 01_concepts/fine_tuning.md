@@ -4,6 +4,12 @@
 
 ---
 
+## What is Fine-Tuning (for RAG)?
+
+Fine-tuning is the process of taking an off-the-shelf embedding or reranker model and further training its weights on data from your specific domain, so it learns the vocabulary and relevance judgments that generic models miss. In a RAG context, it's typically the last lever to pull — after chunking, retrieval strategy, and prompting have already been tuned — because it requires labeled data and ongoing maintenance that cheaper fixes don't.
+
+---
+
 ## When to Fine-Tune vs. Cheaper Fixes
 
 Fine-tuning is expensive: it requires labeled data, training infrastructure, a domain eval set, and (for embeddings) a full corpus re-index. Most retrieval problems have cheaper fixes. Exhaust those first.
