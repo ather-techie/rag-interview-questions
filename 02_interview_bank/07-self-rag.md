@@ -4,6 +4,72 @@
 
 ---
 
+## 🏗️ Architecture Flow, Components & Tools
+
+### Architecture Flow
+
+```
+                 ┌────────────────┐
+                 │   User Query    │
+                 └────────┬────────┘
+                          ▼
+              ┌─────────────────────┐
+              │ Generator emits     │
+              │ [Retrieve]? token   │
+              └──────────┬──────────┘
+                No  ◄─────┴─────►  Yes
+                 │                  │
+                 ▼                  ▼
+        Generate from       ┌───────────────┐
+        parametric          │   Retriever    │
+        knowledge           └───────┬───────┘
+                 │                  │ passages
+                 │                  ▼
+                 │        ┌─────────────────────┐
+                 │        │ [IsRel] critique     │
+                 │        │ (per-passage filter) │
+                 │        └──────────┬──────────┘
+                 │                   ▼
+                 │        ┌─────────────────────┐
+                 │        │  Generate segment    │
+                 │        └──────────┬──────────┘
+                 │                   ▼
+                 │        ┌─────────────────────┐
+                 │        │ [IsSup] critique     │
+                 │        │ (grounding check)     │
+                 │        └──────────┬──────────┘
+                 └──────────┬────────┘
+                            ▼
+                 ┌─────────────────────┐
+                 │ [IsUse] utility      │
+                 │ score + segment      │
+                 │ selection (beam)     │
+                 └──────────┬──────────┘
+                            ▼
+                  Final Answer (loop to next segment if needed)
+```
+
+### Key Components
+
+| Component | Responsibility |
+|---|---|
+| Retrieval-Decision head | Emits the `[Retrieve]` reflection token deciding whether retrieval is needed for this segment |
+| Retriever | Fetches candidate passages when retrieval is triggered |
+| Generator (fine-tuned) | Produces answer segments conditioned on retrieved passages and reflection tokens |
+| Critique / Self-reflection scorer | Emits `[IsRel]`, `[IsSup]`, `[IsUse]` reflection tokens alongside generation |
+| Segment selector | Runs segment-level beam search and picks the best continuation via the combined reflection score |
+
+### Tools & Frameworks
+
+| Category | Example Tools & Frameworks |
+|---|---|
+| Base model | Fine-tuned Llama2-7B/13B or Mistral-7B extended with a reflection-token vocabulary |
+| Inference serving | vLLM, TGI (for multi-candidate / beam sampling) |
+| Retriever | Contriever or another dense retriever, served via a FAISS-style index |
+| Training data generation | Critic LLM (e.g., GPT-4) used offline to annotate reflection tokens |
+
+---
+
 ## Q1. What is Self-RAG and how does it differ from standard RAG? `[Basic]`
 
 <details>

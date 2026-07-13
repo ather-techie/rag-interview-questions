@@ -4,6 +4,57 @@
 
 ---
 
+## 🏗️ Architecture Flow, Components & Tools
+
+### Architecture Flow
+
+```
+User Query
+   │
+   ▼
+Hypothetical Document Generator (LLM)
+  "Write a passage that answers: {query}"
+   │
+   ▼
+Hypothetical (answer-shaped) Document
+   │
+   ▼
+Embedder ── embed(hypothetical), NOT embed(query)
+   │
+   ▼
+Vector Retriever ── nearest-neighbor search
+   │
+   ▼
+Top-k REAL Documents
+   │
+   ▼
+Final Answer Generator (LLM)
+  (query + real retrieved docs)
+   │
+   ▼
+Grounded Answer
+```
+
+### Key Components
+
+| Component | Responsibility |
+|---|---|
+| Hypothetical Document Generator | LLM drafts an answer-shaped passage from the raw query (need not be factually correct) |
+| Embedder | Encodes the hypothetical document (not the query) into a dense vector |
+| Vector Retriever | Finds real corpus documents nearest to the hypothetical's embedding |
+| Final Answer Generator | Produces the grounded answer from the query plus the retrieved real documents |
+
+### Tools & Frameworks
+
+| Category | Example Tools & Frameworks |
+|---|---|
+| Hypothetical generation | Fast/cheap LLM — GPT-4o-mini, Claude Haiku |
+| Embedding model | OpenAI text-embedding-3, BGE, E5 |
+| Vector database | FAISS, Pinecone, Weaviate, pgvector |
+| Orchestration | LangChain HypotheticalDocumentEmbedder, LlamaIndex query transforms |
+
+---
+
 ## Q1. What is HyDE and what problem does it solve? `[Basic]`
 
 <details>
@@ -34,6 +85,11 @@ A query and the documents that answer it look very different:
 In embedding space, the short question sits far from the dense, declarative answer passages. HyDE's hypothetical document **looks like a real answer**, so its embedding lands in the same neighborhood as genuine answer passages — even though the hypothetical may contain factual errors.
 
 **Key insight:** the hypothetical doesn't need to be *correct* — it needs to be *answer-shaped*, so it embeds near real answers.
+
+**Two more examples of the same mechanism:**
+
+- Query: *"How does reinsurance affect claim payouts?"* Step 1 — the LLM generates a hypothetical answer: "Reinsurance allows an insurer to transfer part of the risk of a claim to a reinsurer, which affects payout timing and the insurer's net liability. Common mechanisms include quota share and excess-of-loss treaties..." Step 2 — that hypothetical passage, not the original short query, is embedded. Step 3 — similarity search finds real documents whose embeddings are close to that richer, document-like passage, often outperforming a search on the terse original query.
+- Query: *"agentic RAG benefits"* — a direct embedding of those three words is thin and ambiguous. HyDE instead generates a paragraph-length hypothetical answer about agentic RAG's benefits, and that fuller embedding retrieves much more relevant chunks than the bare keywords would.
 
 </details>
 

@@ -53,6 +53,25 @@ Streaming RAG:
 └─────────────────────────────────────────────────────────────┘
 ```
 
+### Key Components
+
+| Component | Responsibility |
+|---|---|
+| CDC / Event Source Connector | Captures create/update/delete events from databases, APIs, or file systems (e.g., Debezium reading the Postgres WAL) |
+| Stream Processor | Consumes the event topic, parses/validates payloads, chunks text, and triggers embedding |
+| Incremental Embedder | Embeds only the changed chunks (micro-batched) instead of re-embedding the full corpus |
+| Live Index Upserter | Applies delete-then-insert or versioned upserts so the vector index never serves stale chunks |
+| Freshness-aware Retriever | Tracks per-document freshness lag and can enforce a max-staleness SLO on query results |
+
+### Tools & Frameworks
+
+| Category | Example Tools & Frameworks |
+|---|---|
+| CDC | Debezium, AWS DMS, Postgres logical replication |
+| Event streaming | Kafka, AWS Kinesis, Google Pub/Sub, Redis Streams (lighter-weight alternative) |
+| Stream processing | Kafka Streams, Apache Flink, Spark Structured Streaming, Faust/Bytewax |
+| Vector index (incremental upsert) | Qdrant, Weaviate, Pinecone |
+
 ---
 
 ## Implementation: Kafka Producer (Document Side)

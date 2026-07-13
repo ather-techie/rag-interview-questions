@@ -8,6 +8,8 @@
 
 Retrieval is the step in a RAG pipeline that takes a user's query and returns the most relevant chunks or documents from an index to ground the LLM's answer. The simplest form is top-k cosine similarity search over embeddings, but "retrieval" in practice covers a much wider toolbox — hybrid search, query rewriting, multi-vector methods, and more — chosen based on what actually improves relevance for a given use case.
 
+This only works because retrieval is *semantic*, not keyword-based: a query like "car won't start in cold weather" can surface a document about "battery performance in low temperatures" — different words, same underlying meaning — because their embeddings land close together in vector space. A keyword-only search would miss that document entirely.
+
 ---
 
 ## Retrieval as a Ranking Problem
@@ -196,6 +198,15 @@ def reciprocal_rank_fusion(dense_results, sparse_results, k=60):
 ## Query-Side Transformations
 
 Modify the query to improve retrieval.
+
+### Query Rewriting
+
+**Idea:** Reformulate an ill-formed or context-dependent query into a clean, self-contained one *before* it's embedded — distinct from the expansion/decomposition techniques below, which operate on an already well-formed query.
+
+- User asks: *"y is my app slow after last update"* → rewritten to *"What are the common causes of application performance degradation after a software update?"* — shorthand expanded into something retrievable.
+- User asks a follow-up with a dangling pronoun: *"How do I fix it?"* (after an earlier question about OOM errors) → rewritten using conversation history to *"How do I fix an out-of-memory (OOM) error in a Kubernetes pod?"*
+
+Without rewriting, both queries embed to something too thin or too ambiguous to retrieve well — the pronoun case in particular loses all its meaning once conversation context is dropped.
 
 ### HyDE (Hypothetical Document Embeddings)
 

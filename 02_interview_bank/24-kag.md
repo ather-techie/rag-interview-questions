@@ -4,6 +4,54 @@
 
 ---
 
+## 🏗️ Architecture Flow, Components & Tools
+
+### Architecture Flow
+
+```
+Question
+   │
+   ▼
+Logical Form Parser ── decomposes into executable steps
+  (retrieve / filter / sort / deduce)
+   │
+   ▼
+Mutual Index Lookup
+   ├── Knowledge Graph (structured facts)
+   └── Source Text Chunks (linked provenance)
+   │
+   ▼
+Hybrid Logical + Vector Reasoner
+  (executes each step; falls back to text/LLM
+   when the KG is incomplete)
+   │
+   ▼
+Generator ── composes final answer with citations
+   │
+   ▼
+Answer + Provenance
+```
+
+### Key Components
+
+| Component | Responsibility |
+|---|---|
+| Logical Form Parser | LLM decomposes the question into a sequence of typed, executable operators |
+| KG + Text Mutual Index | Bidirectional link between graph nodes/edges and their source text chunks |
+| Hybrid Reasoner | Executes each logical step against the KG, falling back to text or LLM reasoning on gaps |
+| Generator | Composes the final answer from resolved steps, citing sources per step |
+
+### Tools & Frameworks
+
+| Category | Example Tools & Frameworks |
+|---|---|
+| KAG framework | Ant Group's OpenSPG / KAG framework |
+| Graph store | Neo4j, other property-graph databases |
+| Text retriever | Dense embedding retriever (for the text-fallback path) |
+| Extraction / alignment | LLM-based schema-constrained extraction, entity-linking tools |
+
+---
+
 ## Q1. What is KAG and what gap in standard RAG / Graph RAG does it target? `[Basic]`
 
 <details>

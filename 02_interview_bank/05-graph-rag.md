@@ -4,6 +4,58 @@
 
 ---
 
+## 🏗️ Architecture Flow, Components & Tools
+
+### Architecture Flow
+
+```
+Docs
+  │
+  ▼
+Entity Extraction (NER / LLM) ──► Relationship Extraction (typed edges)
+  │
+  ▼
+Entity Resolution (dedupe "Apple" vs "Apple Inc.")
+  │
+  ▼
+Graph Store  ──────────────────────┐
+  │                                │
+  ▼                                │
+Community Detection (Leiden)       │
+  + LLM Community Summarization    │
+  │                                │
+  ▼                                ▼
+       Hybrid Graph + Vector Retrieval
+       (graph traversal narrows candidates,
+        vector search enriches with text context)
+  │
+  ▼
+Generator LLM → Answer
+```
+
+### Key Components
+
+| Component | Responsibility |
+|---|---|
+| Entity Extractor | Identifies people, orgs, locations, and concepts from documents (NER/LLM) |
+| Relationship Extractor | Extracts typed edges between entities (`CEO_OF`, `ACQUIRED`, `LOCATED_IN`) |
+| Entity Resolver | Deduplicates mentions referring to the same real-world entity |
+| Graph Database | Stores nodes/edges and serves Cypher-style traversal queries |
+| Community Detector | Clusters related entities (Leiden) and generates LLM summaries for global/synthesis queries |
+| Hybrid Retriever | Combines graph traversal (structural facts) with vector search (semantic enrichment) |
+| Generator | Synthesizes an answer from graph facts + retrieved supporting text |
+
+### Tools & Frameworks
+
+| Category | Example Tools & Frameworks |
+|---|---|
+| Graph Databases | Neo4j, NebulaGraph, Amazon Neptune |
+| End-to-End Framework | Microsoft GraphRAG |
+| Entity Extraction (NER) | spaCy, GLiNER |
+| In-Memory Graphs | NetworkX |
+
+---
+
 ## Q1. What is Graph RAG and what problem does it solve that vector RAG cannot? `[Basic]`
 
 <details>

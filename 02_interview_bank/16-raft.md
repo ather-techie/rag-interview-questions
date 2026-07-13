@@ -4,6 +4,57 @@
 
 ---
 
+## 🏗️ Architecture Flow, Components & Tools
+
+### Architecture Flow
+
+```
+TRAINING TIME (offline)
+────────────────────────
+Document Corpus
+  → Chunker
+  → Question Generator (LLM: produces realistic Qs per chunk)
+  → Oracle + Distractor Sampler
+       (1 oracle chunk with the answer + K distractor chunks, shuffled)
+  → Chain-of-Thought Answer Generator (LLM: reasons, cites oracle, ignores distractors)
+  → Fine-Tuning Dataset Builder ({question, shuffled_docs, CoT answer})
+  → Fine-Tuner (LoRA / full fine-tune on base model)
+  → RAFT-Tuned Generator (checkpoint)
+
+INFERENCE TIME (online)
+────────────────────────
+User Query
+  → Standard Retriever (BM25 / dense / hybrid — unchanged from normal RAG)
+  → Top-k chunks (may include real distractors)
+  → RAFT-Tuned Generator
+       → CoT reasoning → cites relevant doc → ignores distractors
+  → Answer + citation
+```
+
+### Key Components
+
+| Component | Responsibility |
+|---|---|
+| Question Generator | LLM generates realistic questions per corpus chunk to seed training examples |
+| Oracle/Distractor Sampler | Selects the one chunk containing the answer plus K unrelated chunks, shuffled together |
+| CoT Answer Generator | Produces gold chain-of-thought answers that identify the oracle doc and explicitly reject distractors |
+| Fine-Tuning Dataset Builder | Assembles (question, mixed documents, CoT answer) triples into the training format |
+| Fine-Tuner (LoRA/Full) | Trains the base LLM on the RAFT dataset so it learns domain knowledge + distractor rejection |
+| Inference-Time Retriever | Any standard retriever (unchanged) that supplies top-k context at serving time |
+| RAFT-Tuned Generator | The fine-tuned model that reasons over noisy retrieved context and cites the correct source |
+
+### Tools & Frameworks
+
+| Category | Example Tools & Frameworks |
+|---|---|
+| Fine-tuning | HuggingFace PEFT / LoRA, QLoRA, Axolotl |
+| Base models | LLaMA 3, Mistral, Qwen (open-source, fine-tunable) |
+| Training data generation | GPT-4o / Claude (teacher model for CoT distillation) |
+| Serving | vLLM, TGI, Ollama |
+| Inference-time retrieval | Standard BM25 / dense retriever (Elasticsearch, Qdrant, Pinecone) — unchanged from vanilla RAG |
+
+---
+
 ## Q1. What is RAFT and what gap in standard RAG does it fill? `[Basic]`
 
 <details>

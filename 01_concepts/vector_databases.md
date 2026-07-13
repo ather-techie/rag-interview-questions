@@ -8,6 +8,8 @@
 
 A vector database is a storage system purpose-built to hold embeddings and quickly find the ones most similar to a given query vector, typically using approximate nearest-neighbor (ANN) indexing rather than brute-force comparison. It's the component that sits between "I have millions of embedded chunks" and "give me the top-k most relevant ones in milliseconds." Beyond raw similarity search, most vector databases also handle metadata filtering, hybrid (keyword + vector) search, and horizontal scaling as your index grows.
 
+**Why this beats keyword search:** a user searching "cancel my coverage" against a keyword index would look for the literal words "cancel," "my," "coverage" and might miss a document titled "Policy Termination Procedures" — there's no exact word match. A vector database embeds the query and every document, then finds that "Policy Termination Procedures" is conceptually close to "cancel my coverage" in embedding space even though the two share almost no keywords. The same holds for "car won't start in cold weather" surfacing a document about "battery performance in low temperatures" — different words, same underlying meaning, close together as vectors.
+
 ---
 
 ## What a Vector Database Does

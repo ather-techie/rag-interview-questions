@@ -15,6 +15,65 @@ Privacy-preserving RAG uses a combination of techniques — differential privacy
 
 ---
 
+## 🏗️ Architecture Flow, Components & Tools
+
+### Architecture Flow
+
+```
+INGESTION (offline, per silo)
+  Raw Documents
+        │
+        ▼
+  Anonymizer (NER + regex PII scrub)
+        │
+        ▼
+  Embedder ──► Local Vector Index
+
+QUERY (online)
+  Client Query
+        │
+        ▼
+  On-device Embedder (local model, raw text never leaves the client)
+        │
+        ▼
+  DP Noise Injector (calibrated Gaussian/Laplace noise, budget ε)
+        │
+        ▼
+  k-Anonymity Query Obfuscator (optional: real query + k−1 dummy queries)
+        │
+        ▼
+  Federated Retrieval Coordinator
+        │
+        ├─► Silo A index ─┐
+        ├─► Silo B index ─┤── merge via Reciprocal Rank Fusion (RRF)
+        └─► Silo C index ─┘
+        │
+        ▼
+  Ranked Results (server never saw raw query text or the full corpus)
+```
+
+### Key Components
+
+| Component | Responsibility |
+|---|---|
+| On-device Embedder | Converts the query to a vector locally so raw query text never reaches the server |
+| DP Noise Injector | Adds calibrated noise to the query embedding to defeat vec2text-style inversion attacks |
+| Query Obfuscator | Wraps the real query with k−1 dummy queries so the server cannot tell which result was wanted |
+| Federated Retrieval Coordinator | Dispatches the query to per-silo indexes in parallel and merges ranked lists via RRF without seeing raw content |
+| Anonymizer (ingestion-time) | Scrubs PII from documents via NER/regex before they are embedded and indexed |
+| Trust / Access Layer | Enforces per-tenant and per-silo authorization on top of the privacy techniques above |
+
+### Tools & Frameworks
+
+| Category | Example Tools & Frameworks |
+|---|---|
+| On-device embedding | sentence-transformers, ONNX Runtime (mobile/edge inference) |
+| PII anonymization | spaCy NER, regex pattern libraries, Microsoft Presidio |
+| Differential privacy | Custom Laplace/Gaussian noise implementation, Opacus (DP-trained models) |
+| Federated retrieval | Custom async coordinator (asyncio), gRPC between silo services |
+
+---
+
 ## Threat Model
 
 | Threat | Example | Mitigation |

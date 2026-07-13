@@ -73,6 +73,8 @@ def chunk_fixed_size(text: str, size: int = 512, overlap: int = 100) -> list[str
     return chunks
 ```
 
+**Example impact on retrieval:** A naive fixed-size split can cut a sentence in half at exactly the wrong point. Take: *"Flood damage is excluded unless the policyholder purchased the flood rider."* If the boundary falls mid-sentence, chunk A ends up with "Flood damage is excluded" and chunk B starts with "unless the policyholder purchased the flood rider." A similarity search for "is flood damage covered?" may retrieve only chunk A — its embedding is a strong match for "flood damage excluded" — and never surface chunk B's exception, giving a misleadingly incomplete (even incorrect) answer. This is the single biggest argument for overlap or a boundary-aware strategy over raw fixed-size splitting.
+
 ---
 
 ### 2. Sentence Boundary

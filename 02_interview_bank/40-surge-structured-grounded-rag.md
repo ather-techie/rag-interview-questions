@@ -55,6 +55,24 @@ Query + Schema
   Validated Structured Output
 ```
 
+### Key Components
+
+| Component | Responsibility |
+|---|---|
+| **Schema Definer** | Specifies the target JSON schema (fields, types, nullability) the output must conform to |
+| **Retriever** | Fetches candidate passages (dense/hybrid) relevant to the query/schema fields |
+| **Constrained Extractor** | Uses tool-use/function-calling to populate schema fields only from retrieved passages |
+| **Per-field NLI Grounding Validator** | Checks whether each cited passage entails its extracted field value |
+| **Structured Output Assembler** | Nulls out unentailed/contradicted fields and assembles the final validated object |
+
+### Tools & Frameworks
+
+| Category | Example Tools & Frameworks |
+|---|---|
+| **Schema-constrained generation** | OpenAI/Claude `tool_use`/function-calling with JSON schema |
+| **Schema validation** | Pydantic |
+| **Grounding validation** | NLI models (e.g. `bart-large-mnli`, `cross-encoder/nli-deberta-v3-base`) |
+
 ---
 
 ## Schema-Constrained Generation

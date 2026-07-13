@@ -22,6 +22,63 @@ At query time, a **level router** decides which tree level to retrieve from:
 
 ---
 
+## 🏗️ Architecture Flow, Components & Tools
+
+### Architecture Flow
+
+```
+Corpus
+  │
+  ▼
+Chunk-level Summaries (Level 0: raw chunks)
+  │  summarize groups of chunks
+  ▼
+Section-level Summaries (Level 1)
+  │  summarize groups of sections
+  ▼
+Document-level Summaries (Level 2)
+  │  summarize groups of documents
+  ▼
+Corpus-level Summary (Level 3)
+
+  (4-level tree built along the document's natural
+   structure — NOT clustering, unlike RAPTOR)
+
+────────────────────── query time ──────────────────────
+
+Query
+  │
+  ▼
+Level Router
+  (picks which tier to search based on query scope:
+   overview → L2–3, section → L1, chunk → L0, multi → all)
+  │
+  ▼
+Retriever (fetches from the chosen level)
+  │
+  ▼
+Generator
+```
+
+### Key Components
+
+| Component | Responsibility |
+|---|---|
+| **Recursive Summarizer (LLM)** | Generates faithful summaries bottom-up: chunks → sections → documents → corpus |
+| **4-level Summary Tree Store** | Persists all levels of nodes (chunk/section/document/corpus) with parent/child links and embeddings |
+| **Level Router** | Classifies each query's required abstraction level and selects which tier(s) to search |
+| **Retriever** | Runs similarity search against the nodes at the routed level(s) |
+| **Generator** | Produces the final answer from the retrieved nodes (optionally after drill-down) |
+
+### Tools & Frameworks
+
+| Category | Example Tools & Frameworks |
+|---|---|
+| **Summarization LLM** | Any LLM; GPT-4o-mini or Claude Haiku for cost-efficient recursive summarization |
+| **Vector store** | Vector DB with level metadata (similar infra to RAPTOR, but hierarchy follows document structure rather than semantic clustering) |
+
+---
+
 ## How It Differs from RAPTOR
 
 | | RAPTOR (#13) | Recursive Summary RAG (#41) |

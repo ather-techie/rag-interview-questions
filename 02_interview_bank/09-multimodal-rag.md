@@ -4,6 +4,56 @@
 
 ---
 
+## 🏗️ Architecture Flow, Components & Tools
+
+### Architecture Flow
+
+```
+     Multi-modal documents (text / image / table / audio / video)
+                            │
+        ┌──────────┬────────┼────────┬───────────┐
+        ▼          ▼        ▼        ▼           ▼
+      Text       Image    Table    Audio       Video
+    Encoder     Encoder  Encoder  Encoder    (frames + ASR)
+        │          │        │        │           │
+        └──────────┴────────┴────────┴───────────┘
+                            ▼
+              Unified / per-modality vector store
+                            │
+                            ▼
+                Cross-modal Retriever (query in
+                any modality: text / image / etc.)
+                            │
+                            ▼
+                 Multimodal LLM Generator
+                (text + images inline in prompt)
+                            │
+                            ▼
+                     Answer + citations
+```
+
+### Key Components
+
+| Component | Responsibility |
+|---|---|
+| Text Encoder | Embeds text chunks (e.g., text-embedding-3, BGE) |
+| Image Encoder | Embeds images into a shared or dedicated space (CLIP / SigLIP) |
+| Table/Audio Encoder | Converts tables to text summaries and transcribes audio (Whisper) before embedding |
+| Multi-vector / Unified Vector Store | Stores per-modality embeddings and supports cross-modal ANN search |
+| Cross-modal Retriever | Accepts a query in one modality and retrieves relevant items across modalities |
+| Multimodal Generator | Synthesizes an answer from interleaved text/image context, citing sources |
+
+### Tools & Frameworks
+
+| Category | Example Tools & Frameworks |
+|---|---|
+| Cross-modal embeddings | CLIP, SigLIP, ImageBind, ColPali / ColQwen2 |
+| Vector stores | Weaviate, Milvus, Qdrant (multi-vector support) |
+| Document parsing | Unstructured.io, LlamaParse, Azure Document Intelligence |
+| Multimodal generation | GPT-4o, Claude (vision), Gemini 1.5/2.x |
+
+---
+
 ## Q1. What is Multi-modal RAG and what data types does it support? `[Basic]`
 
 <details>

@@ -4,6 +4,58 @@
 
 ---
 
+## 🏗️ Architecture Flow, Components & Tools
+
+### Architecture Flow
+
+```
+                    ┌────────────────┐
+                    │   User Query    │
+                    └────────┬───────┘
+                             ▼
+                 ┌─────────────────────┐
+                 │      Retriever       │  top-k chunks
+                 └──────────┬──────────┘
+                             ▼
+                 ┌─────────────────────┐
+                 │ Partition into m     │
+                 │ document subsets     │
+                 └──┬────┬────┬────┬───┘
+                    ▼    ▼    ▼    ▼
+                 ┌─────────────────────┐
+                 │  Small Drafter LM    │  (parallel, one call per subset)
+                 │  → draft + rationale │
+                 └──────────┬──────────┘
+                     draft_1 .. draft_m
+                             ▼
+                 ┌─────────────────────┐
+                 │ Large Verifier LM     │  scores / selects / refines
+                 └──────────┬──────────┘
+                             ▼
+                        Final Answer
+```
+
+### Key Components
+
+| Component | Responsibility |
+|---|---|
+| Retriever | Retrieves top-k chunks upstream of drafting |
+| Document Partitioner | Splits retrieved chunks into m subsets (e.g., multi-perspective cluster sampling) |
+| Small Drafter Model | Generates a candidate answer plus rationale per subset, in parallel |
+| Large Verifier / Judge Model | Scores drafts via self-consistency and self-reflection, then selects or refines the best one |
+| Draft Selector | Applies the scoring formula (drafter confidence × self-consistency × self-reflection) to pick the final draft |
+
+### Tools & Frameworks
+
+| Category | Example Tools & Frameworks |
+|---|---|
+| Drafter model | Distilled or fine-tuned small model (e.g., Mistral-7B SFT, Llama-3-8B-Instruct) |
+| Verifier model | GPT-4-class, Claude, Gemini-Ultra-class, or Llama-3-70B |
+| Serving | vLLM with prefix caching for batched, parallel drafting |
+| Retriever | Standard vector DB (Chroma, Pinecone, Qdrant) upstream of partitioning |
+
+---
+
 ## Q1. What is Speculative RAG and what is the core insight behind it? `[Basic]`
 
 <details>

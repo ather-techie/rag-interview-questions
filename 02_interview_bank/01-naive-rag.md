@@ -4,6 +4,42 @@
 
 ---
 
+## 🏗️ Architecture Flow, Components & Tools
+
+### Architecture Flow
+
+```
+[Offline Indexing]
+Docs → Chunker (fixed-size / sliding window) → Embedding Model → Vector DB
+                                                                     │
+[Online Query]                                                       │
+Query → Embedding Model → ANN Search (top-k) ────────────────────────┘
+                                │
+                                ▼
+                        Top-k chunks → Generator LLM → Answer
+```
+
+### Key Components
+
+| Component | Responsibility |
+|---|---|
+| Document Loader / Chunker | Splits raw documents into fixed-size (or overlapping) chunks for embedding |
+| Embedding Model | Converts text chunks and queries into dense vectors in the same semantic space |
+| Vector Store | Persists chunk embeddings and metadata; serves ANN queries |
+| Retriever (top-k ANN) | Finds the k most similar chunks to the query embedding via cosine/dot-product search |
+| Generator LLM | Concatenates retrieved chunks into a prompt and produces the final answer |
+
+### Tools & Frameworks
+
+| Category | Example Tools & Frameworks |
+|---|---|
+| Orchestration | LangChain, LlamaIndex |
+| Vector Store | Chroma, Pinecone, Weaviate, pgvector, FAISS |
+| Embedding Models | OpenAI `text-embedding-3-small/large`, BGE, E5 |
+| Generator LLM | GPT-4o-mini, Claude, Llama 3 |
+
+---
+
 ## Q1. What is Naive RAG and how does it work at a high level? `[Basic]`
 
 <details>

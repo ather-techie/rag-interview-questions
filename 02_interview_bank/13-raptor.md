@@ -4,6 +4,67 @@
 
 ---
 
+## 🏗️ Architecture Flow, Components & Tools
+
+### Architecture Flow
+
+```
+Raw Chunks (Level 0 leaves)
+    │
+    ▼
+Embed (e.g., text-embedding-3-small)
+    │
+    ▼
+UMAP (dimensionality reduction, 2–10 dims)
+    │
+    ▼
+GMM Soft Clustering (a chunk may belong to multiple clusters)
+    │
+    ▼
+LLM Cluster Summarization ──► Summary Nodes (Level 1)
+    │
+    └── repeat Embed → UMAP → GMM → Summarize ──► Level 2 ... Level N
+                                                       │
+                                                       ▼
+                                              Root Summary Node
+                                                       │
+                                                       ▼
+                                   Multi-level Tree (all levels stored)
+                                                       │
+                     ┌─────────────────────────────────┴─────────────────────────────────┐
+                     ▼                                                                    ▼
+          Tree Traversal Retrieval                                          Collapsed (flat) Retrieval
+          (top-down, level by level)                                       (single ANN search, all levels)
+                     │                                                                    │
+                     └─────────────────────────────────┬─────────────────────────────────┘
+                                                       ▼
+                                                   Generator
+```
+
+### Key Components
+
+| Component | Responsibility |
+|---|---|
+| Chunker/Embedder | Splits and embeds raw source chunks (tree leaves) |
+| UMAP Reducer | Reduces embedding dimensionality so clustering distances are meaningful |
+| GMM Clusterer | Soft-clusters nodes so a chunk can belong to more than one topic |
+| LLM Summarizer | Generates an abstractive summary per cluster, recursively per level |
+| Tree Store | Persists all levels with parent/child/source-doc metadata |
+| Tree/Collapsed Retriever | Retrieves via top-down traversal or a single flat ANN search across all levels |
+| Generator | Synthesizes the answer from the retrieved node(s) at the chosen abstraction level |
+
+### Tools & Frameworks
+
+| Category | Example Tools & Frameworks |
+|---|---|
+| Dimensionality reduction | UMAP |
+| Clustering | scikit-learn (Gaussian Mixture Models) |
+| Summarization LLM | GPT-4o-mini (or another low-cost model) |
+| Vector store | Qdrant/Pinecone with level + parent_id metadata for collapsed retrieval |
+| Framework | LlamaIndex `RaptorPack` |
+
+---
+
 ## Q1. What is RAPTOR and what problem does it solve? `[Basic]`
 
 <details>

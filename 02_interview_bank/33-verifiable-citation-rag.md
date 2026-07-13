@@ -4,6 +4,47 @@
 
 ---
 
+## 🏗️ Architecture Flow, Components & Tools
+
+### Architecture Flow
+
+```
+Query
+    │
+    ▼
+Retriever (fetches candidate source chunks)
+    │
+    ▼
+Citation-aware Generator (produces answer with inline citation markers per claim)
+    │
+    ▼
+Attribution / Entailment Verifier (checks each cited claim against its source chunk via NLI or LLM-judge)
+    │
+    ▼
+Citation Renderer (formats verified citations; flags or removes unsupported claims)
+```
+
+### Key Components
+
+| Component | Responsibility |
+|---|---|
+| Retriever | Fetches candidate source chunks relevant to the query |
+| Citation-aware Generator | Produces the answer with inline citation markers tied to specific passages |
+| Attribution/Entailment Verifier | Checks whether the cited passage actually entails the paired claim |
+| Citation Renderer | Formats verified citations in the final output, or flags/removes unsupported claims |
+
+### Tools & Frameworks
+
+| Category | Example Tools & Frameworks |
+|---|---|
+| Retriever + Generator stack | Standard dense retriever paired with an LLM generator |
+| NLI verification model | `cross-encoder/nli-deberta-v3-base`, `bart-large-mnli` |
+| LLM-as-judge verification | Cheap model (e.g. Claude Haiku) prompted for SUPPORTED / NOT_SUPPORTED verdicts |
+| Evaluation benchmark | ALCE (attribution scoring benchmark, Gao et al., 2023) |
+| Post-processing | Citation-formatting and unsupported-claim flagging post-processor |
+
+---
+
 ## Q1. What is Verifiable RAG and why is "citing a source" not the same as "grounding a claim"? `[Basic]`
 
 <details>

@@ -4,6 +4,56 @@
 
 ---
 
+## 🏗️ Architecture Flow, Components & Tools
+
+### Architecture Flow
+
+```
+NL Question
+    │
+    ▼
+Schema Retriever (rank/link relevant tables & columns)
+    │
+    ▼
+Text-to-SQL Generator (LLM + few-shot / DAIL-SQL / DIN-SQL)
+    │
+    ▼
+SQL Validator (AST parse, allowlisted tables/operations)
+    │
+    ▼
+SQL Executor (sandboxed, read-only replica, row/time capped)
+    │
+    ├─ Error / empty result ──► feedback loop back to Generator (retry)
+    │
+    ▼
+Result-to-NL Formatter
+    │
+    ▼
+Answer
+```
+
+### Key Components
+
+| Component | Responsibility |
+|---|---|
+| Schema Retriever | Selects/links the tables and columns relevant to the question |
+| Text-to-SQL Generator | Translates the NL question + linked schema into SQL |
+| SQL Validator | Parses and checks generated SQL for safety and scope |
+| SQL Executor | Runs validated SQL against a sandboxed, read-only database |
+| Result Formatter | Converts result rows into a markdown table, JSON, or NL answer |
+
+### Tools & Frameworks
+
+| Category | Example Tools & Frameworks |
+|---|---|
+| Orchestration | LangChain SQL Agent, LlamaIndex `SQLTableQueryEngine` |
+| Text-to-SQL generation | Vanna.ai, GPT-4/Claude, DAIL-SQL/DIN-SQL prompting |
+| Database access | SQLAlchemy, database-specific drivers |
+| SQL validation | sqlglot / sqlparse AST parsing |
+| Databases | PostgreSQL, MySQL, SQLite, Snowflake |
+
+---
+
 ## Q1. What is Structured RAG and why is text-to-SQL retrieval fundamentally different from vector retrieval? `[Basic]`
 
 <details>

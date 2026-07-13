@@ -4,6 +4,51 @@
 
 ---
 
+## 🏗️ Architecture Flow, Components & Tools
+
+### Architecture Flow
+
+```
+Query
+  │
+  ▼
+Planner / Orchestrator Agent ──[decides: retrieve? decompose? delegate?]
+  │
+  ▼
+Tool Router ──┬──► Vector Search Tool ──┐
+              ├──► SQL Tool ─────────────┤
+              ├──► Web Search Tool ──────┼──► Thought → Action → Observation
+              └──► Specialist Sub-Agent ─┘        (looped until sufficient)
+  │
+  ▼
+Synthesizer (+ optional Reflection/Verification pass)
+  │
+  ▼
+Final Answer
+```
+
+### Key Components
+
+| Component | Responsibility |
+|---|---|
+| Planner / Orchestrator Agent | Decides whether to retrieve, decomposes complex queries, and drives the ReAct loop (Q1, Q2, Q7) |
+| Tool Registry | Defines available tools (vector search, SQL, web, calculator) with schemas the agent can invoke |
+| Retrieval Tool(s) | Vector store, keyword, or hybrid search exposed as a callable tool (Q6) |
+| Specialist Sub-Agents (optional) | Domain-focused agents (Research, Math, Fact-Check) coordinated by a Supervisor in multi-agent setups (Q5, Q8) |
+| Reflection / Correction Step | Re-checks draft answers against retrieved evidence and triggers re-retrieval if ungrounded (Q14) |
+| Synthesizer | Merges tool outputs / sub-agent results into the final grounded answer |
+
+### Tools & Frameworks
+
+| Category | Example Tools & Frameworks |
+|---|---|
+| Agent Orchestration | LangGraph, CrewAI, AutoGen |
+| Tool-Use APIs | Claude tool use, OpenAI function calling |
+| Agentic RAG Frameworks | LlamaIndex Agents |
+| Observability | LangSmith, Arize Phoenix |
+
+---
+
 ## Q1. What is Agentic RAG and how does it differ from pipeline-based RAG? `[Basic]`
 
 <details>
@@ -21,6 +66,13 @@ In **Agentic RAG**, an LLM agent controls the retrieval loop:
 - It can **iterate** — retrieve, read the results, decide to retrieve more if needed
 
 This is powered by frameworks like **ReAct** (Reasoning + Acting), where the LLM alternates between Thought → Action → Observation steps until it has enough information to answer.
+
+**Two architectural flavors:**
+
+- **Single-Agent RAG** — one centralized agent finds, directs, and compiles information on its own. Efficient for well-defined queries against a single data source: e.g., a SaaS support bot that receives "How do I reset my API key?", queries one vector DB of help docs, and generates the answer directly — no delegation needed since the domain is narrow and the source is singular.
+- **Multi-Agent RAG** — a Manager Agent decomposes the task and delegates to specialist sub-agents (Retriever, Verification, etc.), then compiles the final answer. E.g., a financial research assistant receiving "Compare Tesla's Q2 margins to Ford's and flag any regulatory risk" delegates margin lookup to a Retriever Agent, sends draft findings to a Verification Agent to cross-check numbers against a second source, then synthesizes the final comparison itself (see Q8 below for a full worked example).
+
+Pick single-agent when the domain and data source are narrow; move to multi-agent once a query spans multiple sources or needs an independent verification pass.
 
 </details>
 
@@ -334,7 +386,7 @@ Query ──────────► Plan module ──────► [Step 
 
 **Answer:**
 
-Multi-agent systems decompose a complex query into sub-tasks handled by specialist agents that coordinate via a supervisor.
+This is the **Multi-Agent RAG** architectural pattern introduced in Q1, contrasted with the Single-Agent RAG baseline (one agent, one source, no delegation). Multi-agent systems decompose a complex query into sub-tasks handled by specialist agents that coordinate via a supervisor.
 
 ```
                     ┌──────────────────────┐
@@ -1036,6 +1088,85 @@ A sophisticated attacker must bypass all layers, making successful injection att
 
 ---
 
+## Q13. What is a Routing Agent, and how does it decide where to send a query? `[Basic]`
+
+<details>
+<summary>💡 Show Answer</summary>
+
+**Answer:**
+
+A **Routing Agent** (or Automatic Router) inspects a query *before* any retrieval happens and picks the tool or data source best suited to answer it — vector DB, SQL, web search, or no retrieval at all. It's the same idea as the "Intent Classifier" in Q5, generalized beyond customer support:
+
+- *"What's our current cloud spend for Q2?"* → structured/numeric → routes to a **SQL database**, not the vector store.
+- *"What does our data retention policy say about backups?"* → policy/document lookup → routes to the **vector database**.
+- *"What's the latest news on the Fed's interest rate decision?"* → needs current/real-time info outside the knowledge base → routes to a **web search tool**.
+- *"Summarize the attached contract."* → a document is provided directly → **skips retrieval entirely**, routing straight to the LLM with the doc as context.
+
+Routing failures are cheap to make and expensive to hide: if the router misclassifies "cloud spend" as a document lookup, no amount of reranking or prompt engineering downstream recovers the right numeric answer — the query never reached the source that had it.
+
+</details>
+
+---
+
+## Q14. What is a Reflection & Correction Agent, and what does it catch that single-pass retrieval misses? `[Intermediate]`
+
+<details>
+<summary>💡 Show Answer</summary>
+
+**Answer:**
+
+A **Reflection & Correction Agent** re-reads the retrieved evidence *and* the draft answer before it ships, checking whether the answer's claims are actually traceable back to that evidence — not just whether *some* chunk was retrieved.
+
+Example: the system generates an answer citing a support doc for "our refund window is 30 days." The Reflection agent re-reads the chunk it just cited and notices the chunk never actually mentions a refund window — the number was invented, not retrieved. It flags this as a potential hallucination and triggers a re-retrieval (e.g., a more targeted query like "refund window policy") instead of letting the draft ship as-is.
+
+This is the same mechanism used in the multi-agent orchestration example (Q8): a Reflection/Verification Agent step is what would catch a subtler version of this problem — e.g., confirming that a retrieved "water damage" clause actually addresses the specific peril asked about, rather than a superficially similar one.
+
+</details>
+
+---
+
+## Q15. What is Query Rewriting, and how does it differ from Query Decomposition (Q1/Q8)? `[Basic]`
+
+<details>
+<summary>💡 Show Answer</summary>
+
+**Answer:**
+
+**Query Rewriting** reformulates a single, often ill-formed query into something retrieval can actually work with — it doesn't split the query into parts, it clarifies the one query you have:
+
+- *"y is my app slow after last update"* → rewritten to *"What are the common causes of application performance degradation after a software update?"*
+- A follow-up with a dangling pronoun, *"How do I fix it?"* (after an earlier question about OOM errors) → rewritten using conversation context to *"How do I fix an out-of-memory (OOM) error in a Kubernetes pod?"*
+
+**Query Decomposition** (see Q1's single-agent example vs. Q8's GDP comparison) instead takes an already well-formed but *compound* question and splits it into independent sub-questions that can be retrieved separately — e.g., "Compare Tesla's Q2 margins to Ford's" becomes two separate lookups, not one rewritten query.
+
+In practice, rewriting runs first (fix an ambiguous or contextless query) and decomposition runs second if the rewritten query still spans multiple facts that need separate retrieval calls.
+
+</details>
+
+---
+
+## Terminology Note: "A-RAG" vs. "Adaptive RAG"
+
+Some sources (including common workshop material) use **"A-RAG" / "Adaptive-Hierarchical RAG"** to mean *progressive disclosure*: the agent first reviews a brief summary or keyword snippet, and only retrieves the full, token-heavy chunk if the summary turns out to be insufficient. For example, asked "What's our incident response process for a P1 outage?", the agent first pulls a one-paragraph summary of the runbook; only if that summary is ambiguous or incomplete does it fetch the full runbook document.
+
+**This is a different concept from [`11-adaptive-rag.md`](./11-adaptive-rag.md)** in this repo, which defines "Adaptive RAG" as Jeong et al.'s (2024) query-complexity classifier that routes a query to no-retrieval, single-hop, or multi-hop paths. Don't conflate the two in an interview: one is about *how much of a document* to fetch (progressive disclosure — closer in spirit to [`13-raptor.md`](./13-raptor.md)'s hierarchical summarization), the other is about *how many retrieval hops* a query needs.
+
+---
+
+## RAG Types Quick Reference
+
+| Type | One-line description | Covered in |
+|---|---|---|
+| Single-Agent RAG | One centralized agent finds, directs, and compiles information on its own | Q1 |
+| Multi-Agent RAG | A Manager Agent delegates sub-tasks to specialist agents and synthesizes their results | Q1, Q8 |
+| Routing Agent | Classifies query intent and picks the right tool/data source before retrieval | Q13 |
+| Query Planning Agent | Decomposes a compound question into independent sub-queries | Q7, Q8 |
+| ReAct Agent | Interleaves reasoning and retrieval in a serial think-act-observe loop | Q2, Q7 |
+| Reflection & Correction Agent | Checks retrieved evidence/draft answers for relevance or hallucination and re-retrieves if needed | Q14 |
+| A-RAG (Adaptive/Hierarchical RAG) | Reviews a brief summary first, fetches the full chunk only if needed | Terminology Note above |
+
+---
+
 ## Real-World Applications
 
 | Application | Domain | Why Agentic RAG Fits |
@@ -1045,3 +1176,6 @@ A sophisticated attacker must bypass all layers, making successful injection att
 | Financial due diligence assistant | Finance / Legal | Agent issues queries across SEC filings, news, and internal notes, decides when retrieved evidence is sufficient, and cites sources per claim |
 | Scientific literature synthesis | Pharma / Academia | Agent chains PubMed searches, reads abstracts, decides whether to fetch full papers, and aggregates findings across dozens of documents |
 | IT incident response copilot | DevOps / SRE | Agent queries runbooks, metrics dashboards (via tool calls), and past incident tickets to recommend a root-cause fix under time pressure |
+| Clinical assistant | Healthcare | Agent validates medical literature and patient records against each other before producing an output, rather than trusting a single retrieval pass on sensitive data |
+| Legal research assistant | Legal | Maps statutes, precedents, and case law across sources and cross-checks context before drafting summaries or legal arguments |
+| Intelligent tutoring system | Education | Plans which sources to pull from per student question and explains answers with supporting context, rather than returning a single static passage |

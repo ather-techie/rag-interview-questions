@@ -4,6 +4,53 @@
 
 ---
 
+## 🏗️ Architecture Flow, Components & Tools
+
+### Architecture Flow
+
+```
+Query                                     Document Corpus
+  │                                            │
+  ▼                                            ▼
+Per-Token Query Encoder              Per-Token Document Encoder
+  │  [q₁, q₂, ..., qₘ]                         │  [d₁, d₂, ..., dₙ] per doc (offline)
+  │                                            ▼
+  │                                   Token-level ANN Index (PLAID)
+  │                                            │
+  │                                            ▼
+  │                                   Fast Candidate Pre-filter (top 100–1000)
+  │                                            │
+  └───────────────► MaxSim Late-Interaction Scorer ◄──────────────┘
+                     score = Σᵢ max_j( qᵢ · dⱼ )
+                              │
+                              ▼
+                    (optional) Cross-Encoder Reranker
+                              │
+                              ▼
+                    Top-k Passages → LLM Generation
+```
+
+### Key Components
+
+| Component | Responsibility |
+|---|---|
+| Per-token Query Encoder | Encodes the query into one embedding per token instead of a single pooled vector |
+| Per-token Document Encoder | Encodes each document into one embedding per token, computed offline and stored in the index |
+| Token-level ANN Index | Stores compressed per-token vectors and narrows the corpus to a fast candidate set |
+| MaxSim Late-Interaction Scorer | For each query token, finds its best-matching document token and sums the scores |
+| Optional Reranker | Refines the top candidates further when extra precision is needed |
+
+### Tools & Frameworks
+
+| Category | Example Tools & Frameworks |
+|---|---|
+| Model | ColBERTv2 (`colbert-ir/colbertv2.0`) |
+| Index | PLAID index with residual (2-bit) compression |
+| Wrapper library | RAGatouille |
+| Integration | `RAGatouilleLangChainRetriever`, LlamaIndex ColBERT integrations |
+
+---
+
 ## Q1. What is ColBERT and how does it differ from standard bi-encoders? `[Basic]`
 
 <details>

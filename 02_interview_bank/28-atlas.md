@@ -4,6 +4,63 @@
 
 ---
 
+## 🏗️ Architecture Flow, Components & Tools
+
+### Architecture Flow
+
+```
+QUERY
+  │
+  ▼
+┌───────────────────────────┐
+│  Contriever (retriever)     │  dense dual-encoder, contrastively
+│  jointly fine-tuned         │  pretrained, then jointly trained
+└────────────┬──────────────── ┘
+             │ top-k passages
+             ▼
+┌────────────────────────────────────┐
+│  Passage Index (ANN/MIPS)            │◄── periodic re-encoding OR
+└────────────┬────────────────────────── ┘   query-side-only updates
+             │
+             ▼
+┌──────────────────────────────────────┐
+│  Fusion-in-Decoder (FiD) Reader         │
+│   encodes each (query+passage) alone     │
+│   decoder fuses via cross-attention      │
+└────────────┬──────────────────────────── ┘
+             │ answer + reader cross-attention weights
+             ▼
+┌────────────────────────────────────────┐
+│  Joint Fine-Tuning Loop                   │
+│  (attention distillation / EMDR² / PDist   │
+│   signal → gradient into retriever)        │
+└────────────┬──────────────────────────────── ┘
+             │ updates Contriever + FiD together
+             ▼
+      Few-shot-adapted Atlas model
+```
+
+### Key Components
+
+| Component | Responsibility |
+|---|---|
+| Contriever (retriever) | Dense retriever, contrastively pretrained, jointly fine-tuned with the reader |
+| FiD Reader | Encodes each retrieved passage independently; decoder fuses evidence via cross-attention |
+| Passage Index | ANN/MIPS index of the corpus, refreshed (or query-side-only updated) as the retriever trains |
+| Joint Fine-Tuning Loop | Derives a retriever training signal from reader usefulness (attention distillation, EMDR², PDist, LOOP) |
+
+### Tools & Frameworks
+
+| Category | Example Tools & Frameworks |
+|---|---|
+| Retriever | Contriever (Meta AI), contrastive self-supervised pretraining |
+| Reader | T5-based Fusion-in-Decoder |
+| ML framework | HuggingFace `transformers` / `datasets` |
+| ANN index | FAISS |
+| Evaluation | KILT benchmark suite, Natural Questions, TriviaQA, MMLU harnesses |
+
+---
+
 ## Q1. What is Atlas and what is its headline result? `[Basic]`
 
 <details>

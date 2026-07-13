@@ -4,6 +4,48 @@
 
 ---
 
+## 🏗️ Architecture Flow, Components & Tools
+
+### Architecture Flow
+
+```
+SETUP / CACHE-BUILD TIME (once, or on corpus update)
+─────────────────────────────────────────────────────
+Entire Corpus (must fit in context window)
+  → Corpus Preloader (clean, concatenate, optionally prepend ToC)
+  → KV-Cache Builder (single forward pass computes key/value tensors
+       for every corpus token, use_cache=True)
+  → Cache Store (disk / GPU memory / provider-side prompt cache)
+
+QUERY TIME (online, per request)
+─────────────────────────────────
+User Query
+  → Cache Loader (restores precomputed KV cache — no recomputation)
+  → Generator (LLM appends query tokens to cached prefix)
+  → Answer (no retrieval step at all)
+```
+
+### Key Components
+
+| Component | Responsibility |
+|---|---|
+| Corpus Preloader | Cleans, concatenates, and orders the full corpus so it fits the context window |
+| KV-Cache Builder | Runs one forward pass over the corpus to precompute key/value attention tensors |
+| Cache Store | Persists the KV cache (disk, GPU/CPU memory, or provider-side cache) between requests |
+| Cache Loader | Restores the precomputed cache at query time, avoiding re-encoding the corpus |
+| Generator | Produces the answer by attending to the cached corpus plus the new query tokens |
+
+### Tools & Frameworks
+
+| Category | Example Tools & Frameworks |
+|---|---|
+| KV caching (self-hosted) | HuggingFace `transformers` `past_key_values`, vLLM, SGLang |
+| Provider-side caching | Anthropic prompt caching, OpenAI prompt caching |
+| Long-context models | Claude 3.5 Sonnet, Gemini 1.5 Pro, GPT-4 Turbo (for corpus preload) |
+| Memory management | GPU/CPU offload, INT8/INT4 KV-cache quantization for large caches |
+
+---
+
 ## Q1. What is Cache-Augmented Generation and how does it differ from RAG? `[Basic]`
 
 <details>

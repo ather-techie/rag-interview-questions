@@ -12,6 +12,52 @@ Distinct from Structured RAG (architecture #12), which routes queries to a relat
 
 ---
 
+## 🏗️ Architecture Flow, Components & Tools
+
+### Architecture Flow
+
+```
+Document (PDF / HTML / spreadsheet)
+        │
+        ▼
+  Table Extractor  (detects & isolates tables from surrounding text)
+        │
+        ├───────────────────────────────┐
+        ▼                               ▼
+  Row/Column Linearizer          Text-to-SQL Router
+  (Markdown or per-row chunks)   (for queryable structured stores)
+        │                               │
+        ▼                               │
+  Table-aware Embedder                  │
+        │                               │
+        ▼                               │
+  Hybrid Retriever (table + text) ◄─────┘
+        │
+        ▼
+  Generator (reasons over table structure, shows arithmetic steps)
+```
+
+### Key Components
+
+| Component | Responsibility |
+|---|---|
+| Table Extractor | Detects and isolates tables from surrounding prose in PDFs/HTML (pdfplumber, BeautifulSoup) |
+| Linearizer / SQL Router | Converts a table into retrievable text units (full Markdown or per-row chunks), or routes structured queries to SQL when a live table/database is available |
+| Table-aware Embedder | Produces embeddings that capture row/column structure rather than flattened tokens |
+| Hybrid Retriever | Merges table-chunk and text-chunk results, boosting table results for numerical/comparison queries |
+| Generator | Consumes the retrieved table + text context and performs or shows arithmetic explicitly |
+
+### Tools & Frameworks
+
+| Category | Example Tools & Frameworks |
+|---|---|
+| Table extraction | Camelot, pdfplumber, unstructured.io, Azure Document Intelligence |
+| Table-aware encoders | TAPAS, OmniTab, TAT-QA-style hybrid text+table encoders |
+| Structured-query path | LangChain SQL Agent, direct Text-to-SQL over the source table/database |
+| Retrieval / embedding | sentence-transformers (bge), vector DB with `chunk_type` metadata |
+
+---
+
 ## Why Standard RAG Fails on Tables
 
 ```

@@ -201,6 +201,8 @@ euclidean_2 = np.linalg.norm(query - doc2)  # ~0.87 (different)
 # Euclidean depends on vector magnitude; cosine does not
 ```
 
+**A more concrete, human-readable example:** embed the query "cancellation policy" into a vector, then run cosine similarity against every stored chunk vector. A similarity search over a policy-docs index might return the top-k chunks ranked by score — say, 0.89, 0.85, 0.81 — where the 0.89 chunk is the exact cancellation clause and the two runners-up are adjacent sections (e.g., "Claims Process," "Renewal Terms") that share vocabulary but aren't the answer. The numbers themselves aren't meaningful in isolation — what matters is the *relative ranking* they produce, which is why cosine similarity (invariant to scale) rather than raw dot product is the standard choice for ranking retrieval candidates.
+
 ---
 
 ## Embedding Quality Problems

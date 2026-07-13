@@ -4,6 +4,61 @@
 
 ---
 
+## 🏗️ Architecture Flow, Components & Tools
+
+### Architecture Flow
+
+```
+PRE-TRAINING CORPUS (e.g., Wikipedia)
+        │
+        ▼
+┌─────────────────────────┐
+│   Neural Retriever        │  p(z|x) — dual-encoder, jointly trained
+│  (query/doc encoders)     │◄────────────────┐
+└────────────┬────────────── ┘                 │
+             │ top-k candidate docs z            │ gradient flows back
+             ▼                                    │ through retriever AND
+┌────────────────────────────┐                    │ knowledge encoder
+│ Knowledge-Augmented         │                    │
+│ Encoder / Reader            │────────────────────┘
+│  combines query x + doc z   │
+└────────────┬─────────────────┘
+             │ p(y|z,x)
+             ▼
+   Masked-LM Pretraining Objective
+   (marginalize over z, backprop into both)
+             │
+             ▼
+   ┌───────────────────────────┐
+   │ Trained Retriever + Reader │
+   └────────────┬────────────────┘
+                ▼
+   INFERENCE: open-domain question
+   → retrieve top-k (MIPS) → read → answer
+```
+
+### Key Components
+
+| Component | Responsibility |
+|---|---|
+| Neural Retriever (bi-encoder) | Embeds query and documents; trained **end-to-end** via the LM loss to score `p(z\|x)` |
+| Document Index (MIPS) | Stores document embeddings for fast top-k retrieval; **asynchronously refreshed** as the encoder updates |
+| Knowledge-Augmented Encoder / Reader | Combines input `x` with a retrieved document `z` to predict the masked token `y` |
+| MLM Pretraining Objective | Salient-span masking task whose loss is marginalized over retrieved docs — the gradient that trains the retriever |
+| Async Index Builder | Concurrent job that re-encodes the corpus and rebuilds the MIPS index every N training steps |
+
+### Tools & Frameworks
+
+| Category | Example Tools & Frameworks |
+|---|---|
+| Model implementation | TensorFlow / JAX (original REALM implementation) |
+| Retrieval index / ANN search | FAISS, ScaNN, or custom MIPS implementations |
+| Large-scale pretraining infra | TPU pods / distributed training clusters for MLM pretraining |
+| Retriever warm-start | Inverse Cloze Task (ICT) contrastive pretraining |
+| Downstream fine-tuning & eval | Open-domain QA datasets (Natural Questions, WebQuestions, CuratedTrec) |
+
+---
+
 ## Q1. What is REALM and what makes it different from inference-time RAG? `[Basic]`
 
 <details>

@@ -4,6 +4,54 @@
 
 ---
 
+## 🏗️ Architecture Flow, Components & Tools
+
+### Architecture Flow
+
+```
+OFFLINE INDEXING (once, or on corpus update)
+─────────────────────────────────────────────
+Document Corpus
+  → LLM-based OpenIE Extractor (subject, relation, object) triples per passage
+  → Knowledge Graph Builder
+       Nodes = entities, Edges = relations, node→passage mapping
+  → Synonymy Edge Linker (embeds node phrases, links near-duplicate entities)
+  → Knowledge Graph Store (graph DB / in-memory graph)
+
+ONLINE QUERY (single pass, no iterative LLM loop)
+───────────────────────────────────────────────────
+User Query
+  → Query Entity Linker (LLM/NER extracts entities, links to KG nodes via embedding similarity)
+  → Personalized PageRank Retriever
+       (seeds PPR mass on linked nodes, spreads activation across
+        relation + synonym edges, aggregates scores back to passages)
+  → Ranked Passages (top-k)
+  → Generator → Answer with citations
+```
+
+### Key Components
+
+| Component | Responsibility |
+|---|---|
+| OpenIE Extractor | LLM extracts (subject, relation, object) triples from every passage, once, offline |
+| Knowledge Graph Builder | Assembles entity nodes and relation edges, recording which passage(s) each node came from |
+| Synonymy Edge Linker | Embeds node phrases and adds edges between near-duplicate entities so PageRank can flow across surface-form variation |
+| Query Entity Linker | Extracts query entities and maps them to existing KG nodes via embedding similarity |
+| Personalized PageRank Retriever | Runs a single spreading-activation pass from query-anchored seed nodes, scoring passages by graph proximity |
+| Generator | Produces the final answer from the top-k PPR-ranked passages, in one LLM call (no per-hop generation) |
+
+### Tools & Frameworks
+
+| Category | Example Tools & Frameworks |
+|---|---|
+| Graph library | HippoRAG OSS reference implementation, NetworkX (PPR computation) |
+| OpenIE extraction | Any LLM (GPT-4o, Claude, LLaMA) prompted for triple extraction |
+| Embeddings | Sentence-transformers / OpenAI embeddings for node synonymy and query linking |
+| Graph storage | NetworkX in-memory graph, Neo4j (for larger production graphs) |
+| Evaluation | MuSiQue, 2WikiMultiHopQA, HotpotQA for multi-hop recall benchmarking |
+
+---
+
 ## Q1. What is HippoRAG and what problem does it solve? `[Basic]`
 
 <details>

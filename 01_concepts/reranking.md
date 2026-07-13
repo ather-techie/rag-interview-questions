@@ -40,6 +40,8 @@ Bi-Encoder Retrieval (Fast)
 Key trade-off: +50–150ms latency for 5–15% precision improvement
 ```
 
+**Worked example:** Query: *"What's the maximum claim payout for water damage under a standard homeowner's policy?"* Initial bi-encoder retrieval pulls the top 20 chunks by embedding similarity, including: Chunk A (general homeowner's policy overview, mentions "water damage" once in passing), Chunk B (the exact clause on water-damage payout limits), Chunk C (flood-insurance exclusions — semantically similar, but flood ≠ water damage), and Chunk D (fire-damage payout limits — structurally similar language, wrong peril). A cross-encoder reranker scores each chunk *against the actual query* and reorders them: B → 0.94, A → 0.61, D → 0.40, C → 0.22 — correctly demoting C despite its high embedding similarity. Only the top 2–3 reranked chunks reach the LLM, so the model answers from Chunk B instead of getting diluted or misled by Chunk C.
+
 ---
 
 ## Cross-Encoder Architecture

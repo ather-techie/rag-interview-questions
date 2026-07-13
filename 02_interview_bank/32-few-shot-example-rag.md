@@ -4,6 +4,46 @@
 
 ---
 
+## 🏗️ Architecture Flow, Components & Tools
+
+### Architecture Flow
+
+```
+New Query
+    │
+    ▼
+Example Retriever (search vector store of (query, answer) demonstration pairs)
+    │
+    ▼
+Top-k Similar Demonstrations selected
+    │
+    ▼
+Prompt Assembler (builds few-shot prompt: demonstrations + new query)
+    │
+    ▼
+Generator (LLM produces the answer, conditioned on the retrieved examples)
+```
+
+### Key Components
+
+| Component | Responsibility |
+|---|---|
+| Demonstration Store | Vector DB of (query, answer) pairs, indexed on the query side |
+| Example Retriever | Finds the top-k demonstrations most semantically similar to the new query |
+| Prompt Assembler | Formats retrieved demonstrations and the new query into a single few-shot prompt |
+| Generator | LLM that produces the answer, following the pattern shown by the retrieved examples rather than raw documents |
+
+### Tools & Frameworks
+
+| Category | Example Tools & Frameworks |
+|---|---|
+| Embedding model | sentence-transformers (e.g. `all-MiniLM-L6-v2`) |
+| Vector store | FAISS, Chroma |
+| Example selection | MMR (Maximal Marginal Relevance) for relevance + diversity |
+| Automated optimization | DSPy for automated example selection and prompt optimization |
+
+---
+
 ## Q1. What is Few-Shot Example RAG and how does it differ from standard document RAG? `[Basic]`
 
 <details>

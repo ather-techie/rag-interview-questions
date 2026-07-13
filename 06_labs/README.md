@@ -10,6 +10,7 @@
 | [02_hybrid_rag.ipynb](02_hybrid_rag.ipynb) | BM25 + dense retrieval merged with RRF | `rank_bm25`, FAISS, RRF formula, comparison vs. each alone |
 | [03_reranker_pipeline.ipynb](03_reranker_pipeline.ipynb) | Two-stage: bi-encoder → cross-encoder reranker | `CrossEncoder`, latency trade-off, rank change analysis |
 | [04_ragas_evaluation.ipynb](04_ragas_evaluation.ipynb) | Full eval harness: RAGAS + custom judges + regression detection | Golden datasets, RAGAS 4 metrics, LLM-as-judge, Recall@k |
+| [05_agentic_rag.ipynb](05_agentic_rag.ipynb) | ReAct & Plan-and-Execute agentic retrieval loops with tool use, stopping criteria, and prompt-injection guardrails | Anthropic tool-use loops, multi-hop query decomposition, agent evaluation, injection defense |
 
 ## Prerequisites
 
@@ -36,6 +37,10 @@ Lab 03 (Reranker)
 Lab 04 (Evaluation)
   └── Measure: RAGAS + Recall@k on Labs 01–03
   └── Why: without measurement, improvement is guesswork
+
+Lab 05 (Agentic RAG)
+  └── Add: multi-step ReAct / Plan-and-Execute tool-use loops on top of Lab 01–03 retrieval
+  └── Why: single-shot pipelines can't handle compound, multi-hop queries requiring reasoning + tool use
 ```
 
 ## Estimated Costs
@@ -46,5 +51,6 @@ Lab 04 (Evaluation)
 | 02 | ~5 Claude calls | ~$0.001 |
 | 03 | ~5 Claude calls | ~$0.001 |
 | 04 | ~50–80 RAGAS judge calls | ~$0.05 |
+| 05 | ~25–40 Claude calls (multi-step loops + eval) | ~$0.01–0.02 |
 
 All labs use `claude-haiku-4-5-20251001` except RAGAS evaluation (uses `claude-sonnet-5` as judge).

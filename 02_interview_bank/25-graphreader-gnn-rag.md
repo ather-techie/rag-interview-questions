@@ -4,6 +4,54 @@
 
 ---
 
+## 🏗️ Architecture Flow, Components & Tools
+
+### Architecture Flow
+
+```
+GraphReader                          GNN-RAG
+────────────                         ───────
+Long Document                        Query + Knowledge Graph
+   │                                    │
+   ▼                                    ▼
+Graph-of-Notes Builder               Subgraph Extraction
+(chunks → atomic facts → nodes)      (entities → k-hop neighborhood)
+   │                                    │
+   ▼                                    ▼
+Traversal Planning Agent             GNN Retriever
+(LLM explores nodes,                 (message-passing scores nodes,
+ keeps a notebook)                    extracts reasoning paths)
+   │                                    │
+   ▼                                    ▼
+Subgraph / Notebook Extractor        Path Verbalizer
+(sufficiency check)                  (paths → natural language)
+   │                                    │
+   └───────────────┬────────────────────┘
+                    ▼
+          Generator (LLM) ── produces final answer
+```
+
+### Key Components
+
+| Component | Responsibility |
+|---|---|
+| Graph-of-Notes Builder (GraphReader) | Converts long documents into a graph of atomic facts/key elements |
+| GNN Retriever (GNN-RAG) | Message-passing network that scores KG nodes and extracts reasoning paths |
+| Traversal Planning Agent (GraphReader) | LLM agent that navigates the note-graph step-by-step, keeping a notebook |
+| Subgraph / Path Extractor | Selects the relevant notes (GraphReader) or paths (GNN-RAG) to hand to generation |
+| Generator | Produces the final answer from the notebook (GraphReader) or verbalized paths (GNN-RAG) |
+
+### Tools & Frameworks
+
+| Category | Example Tools & Frameworks |
+|---|---|
+| GNN modeling | PyTorch Geometric, DGL |
+| Agentic traversal (GraphReader) | LLM agent frameworks (LangChain agents, custom ReAct loop) |
+| Graph store | Neo4j, other KG stores |
+| KGQA benchmarks/data | WebQSP, ComplexWebQuestions for GNN-RAG training/eval |
+
+---
+
 ## Q1. What are GraphReader and GNN-RAG, and what do they have in common? `[Basic]`
 
 <details>

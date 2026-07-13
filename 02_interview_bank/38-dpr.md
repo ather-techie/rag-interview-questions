@@ -35,6 +35,24 @@ Retrieval: find top-k passages maximizing q · p_i
 
 Key design decision: **two separate encoders** (not a single cross-encoder). This enables offline indexing — you can pre-compute all passage embeddings and store them in FAISS before any query arrives.
 
+### Key Components
+
+| Component | Responsibility |
+|---|---|
+| **Question Encoder (BERT-base)** | Encodes the incoming query into a d-dim dense vector at inference time |
+| **Passage Encoder (BERT-base)** | Encodes every corpus passage into a d-dim dense vector, run offline/in advance |
+| **Offline Passage Index** | Stores all pre-computed passage embeddings for fast lookup at query time |
+| **Inner-Product Retriever** | Computes q · p over the index and returns the top-k highest-scoring passages |
+| **Downstream Reader/Generator** | Consumes retrieved passages to extract an answer span or generate a response |
+
+### Tools & Frameworks
+
+| Category | Example Tools & Frameworks |
+|---|---|
+| **Vector index** | FAISS (`IndexFlatIP` for exact inner-product search) |
+| **Model library** | HuggingFace `transformers` — `DPRQuestionEncoder`, `DPRContextEncoder` |
+| **Base checkpoints** | BERT-base (uncased) checkpoints for both encoders |
+
 ---
 
 ## Training Objective

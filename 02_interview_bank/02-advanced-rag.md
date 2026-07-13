@@ -4,6 +4,50 @@
 
 ---
 
+## 🏗️ Architecture Flow, Components & Tools
+
+### Architecture Flow
+
+```
+Query
+  │
+  ▼
+Query Rewriter / Expander (HyDE, multi-query)
+  │
+  ▼
+Hybrid Retriever
+  ├── Sparse (BM25) ──┐
+  └── Dense (Vector) ─┴──► Reciprocal Rank Fusion (RRF)
+  │
+  ▼
+Cross-Encoder Reranker (top-100 → top-5)
+  │
+  ▼
+Generator LLM → Answer
+```
+
+### Key Components
+
+| Component | Responsibility |
+|---|---|
+| Query Rewriter / Expander | Reformulates or generates hypothetical answers (HyDE) to bridge the query-document vocabulary gap |
+| Sparse Retriever (BM25) | Keyword-based retrieval; strong for exact terms, names, and codes |
+| Dense Retriever | Embedding-based semantic search; strong for paraphrased/conceptual matches |
+| Fusion Step | Merges sparse + dense result lists (e.g., Reciprocal Rank Fusion) into one ranked list |
+| Cross-Encoder Reranker | Jointly scores (query, doc) pairs to reorder top candidates by true relevance |
+| Generator | Synthesizes the final answer from the reranked, often compressed, context |
+
+### Tools & Frameworks
+
+| Category | Example Tools & Frameworks |
+|---|---|
+| Orchestration | LangChain, LlamaIndex |
+| Sparse Retrieval (BM25) | Elasticsearch, OpenSearch |
+| Dense Retrieval | Pinecone, Weaviate, Qdrant |
+| Reranking | Cohere Rerank, `bge-reranker`, `cross-encoder/ms-marco-MiniLM` |
+
+---
+
 ## Q1. What distinguishes Advanced RAG from Naive RAG? `[Basic]`
 
 <details>

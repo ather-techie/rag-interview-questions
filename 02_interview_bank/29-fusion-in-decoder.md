@@ -4,6 +4,61 @@
 
 ---
 
+## 🏗️ Architecture Flow, Components & Tools
+
+### Architecture Flow
+
+```
+QUERY
+  │
+  ▼
+┌───────────────────────────┐
+│  Upstream Retriever          │  e.g., BM25 / DPR — trained and
+│  (retriever-agnostic)        │  operated separately from FiD
+└────────────┬──────────────── ┘
+             │ top-k passages P1...Pk
+             ▼
+┌───────────────────────────────────────────┐
+│  Per-Passage Encoder (parallel)               │
+│   enc(q + P1) → H1                             │
+│   enc(q + P2) → H2       (independent,          │
+│   ...                       linear cost in k)    │
+│   enc(q + Pk) → Hk                             │
+└────────────┬──────────────────────────────────── ┘
+             │ concatenate [H1;H2;...;Hk]
+             ▼
+┌───────────────────────────────────────┐
+│  Decoder (joint cross-attention)         │
+│   cross-attends over ALL encoded          │
+│   passages at once → fuses evidence        │
+└────────────┬────────────────────────────── ┘
+             │
+             ▼
+     Generator Output (answer)
+```
+
+### Key Components
+
+| Component | Responsibility |
+|---|---|
+| Upstream Retriever | Supplies top-k passages; independent of FiD and swappable (BM25, DPR, Contriever, ...) |
+| Per-Passage Encoder | Encodes each (query+passage) pair independently and in parallel — linear cost in k |
+| Concatenation step | Joins the encoded passage representations before decoding |
+| Decoder (joint cross-attention) | Attends jointly over all passage encodings to fuse evidence into one generated answer |
+| Generator output | Produces the final generative, synthesized answer |
+
+### Tools & Frameworks
+
+| Category | Example Tools & Frameworks |
+|---|---|
+| Encoder-decoder backbone | T5, BART |
+| Upstream retriever | DPR, BM25 (Pyserini / Elasticsearch), Contriever |
+| ML framework | HuggingFace `transformers` |
+| Efficiency variants | FiD-light, FiDO (FiD-Optimized) implementations |
+| Reranking (pre-FiD pruning) | Cross-encoder rerankers to shrink k before passages reach FiD |
+
+---
+
 ## Q1. What is Fusion-in-Decoder and what problem does it solve? `[Basic]`
 
 <details>

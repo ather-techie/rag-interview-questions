@@ -32,6 +32,52 @@ ToT-RAG:
 
 ---
 
+## 🏗️ Architecture Flow, Components & Tools
+
+### Architecture Flow
+
+```
+Query
+  │
+  ▼
+Thought Generator ──► candidate branches (thought 1, 2, 3, ...)
+  │
+  ▼
+Branch Evaluator/Scorer ──► score each branch
+  │
+  ├── low score ──► prune
+  │
+  ▼ (promising branches)
+Conditional Retriever ──► fetch evidence targeted at that branch
+  │
+  ▼
+Search Controller (BFS / DFS / beam search)
+  │   expands most promising branches, repeats
+  │   Thought Generator → Evaluator → Retriever loop
+  ▼
+Generator ──► synthesizes final answer from best path + evidence
+```
+
+### Key Components
+
+| Component | Responsibility |
+|---|---|
+| Thought Generator | Proposes multiple candidate reasoning branches at each node |
+| Branch Evaluator/Scorer | Scores each branch's promise (0–1) and flags final-answer candidates |
+| Conditional Retriever | Fetches evidence targeted at a specific branch/hypothesis rather than a global query |
+| Search Controller | Expands the tree via BFS, DFS, or beam search, applying a prune threshold |
+| Generator | Synthesizes the final answer from the winning path and its accumulated evidence |
+
+### Tools & Frameworks
+
+| Category | Example Tools & Frameworks |
+|---|---|
+| Orchestration | Custom ToT controller (prompt-based, no dedicated library required), LangGraph for branch expansion/pruning |
+| Retrieval | Any standard retriever / vector DB (Qdrant, Weaviate, Pinecone) |
+| Models | Cheap model (Haiku) for thought generation/evaluation, stronger model (Sonnet) for final synthesis |
+
+---
+
 ## When ToT-RAG Helps
 
 ToT-RAG is worth the cost when:

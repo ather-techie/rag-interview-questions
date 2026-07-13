@@ -4,6 +4,56 @@
 
 ---
 
+## 🏗️ Architecture Flow, Components & Tools
+
+### Architecture Flow
+
+```
+                        ┌──────────────────────────┐
+                        │       Orchestrator        │
+                        └────────────┬──────────────┘
+                                     │
+Query ──────────► Routing Module ───┤
+                                     │
+              ┌──────────────────────┼──────────────────────┐
+              ▼                      ▼                      ▼
+     Retrieval Module A      Retrieval Module B      Memory Module
+     (vector search)         (SQL / web / BM25)       (short + long term)
+              │                      │                      │
+              └──────────────────────┼──────────────────────┘
+                                     ▼
+                             Fusion Module
+                                     │
+                                     ▼
+                            Reranking Module
+                                     │
+                                     ▼
+                            Generation Module → Answer
+```
+
+### Key Components
+
+| Component | Responsibility |
+|---|---|
+| Router | Classifies the query and selects which retrieval module(s) to invoke |
+| Retrieval Module(s) | Pluggable, swappable retrievers behind a common interface (vector, BM25, SQL, web) |
+| Memory Module | Maintains short-term conversation state and long-term user/session knowledge |
+| Fusion Module | Merges results from multiple retrieval modules (e.g., RRF) |
+| Reranker Module | Reorders fused results by relevance before generation |
+| Generator Module | Reader/LLM that synthesizes the grounded final answer |
+| Orchestrator | Wires modules together, handles fallback/error recovery, and enables A/B swapping |
+
+### Tools & Frameworks
+
+| Category | Example Tools & Frameworks |
+|---|---|
+| Modular Query Pipelines | LlamaIndex modular query pipelines / `RouterQueryEngine` |
+| Pipeline Composition | Haystack pipelines, LangChain LCEL, LangGraph |
+| Memory | MemGPT, Zep |
+| Fusion / Ensemble Retrieval | LangChain `EnsembleRetriever`, LlamaIndex `QueryFusionRetriever` |
+
+---
+
 ## Q1. What is Modular RAG and why is it an improvement over fixed pipelines? `[Basic]`
 
 <details>

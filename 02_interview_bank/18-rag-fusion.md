@@ -4,6 +4,50 @@
 
 ---
 
+## 🏗️ Architecture Flow, Components & Tools
+
+### Architecture Flow
+
+```
+User Query
+  → LLM Query Expander (generates N diverse reformulations: paraphrase,
+       perspective-shift, sub-question decomposition)
+  → [Original Query + N Reformulations]
+       │
+       ▼
+  N Parallel Retrievers (one retrieval per query variant, run concurrently)
+       │
+       ▼
+  Reciprocal Rank Fusion (RRF) Merger
+       (combines N ranked lists into 1 fused list using rank-based scoring)
+       │
+       ▼
+  Top-k Fused Chunks
+       → Generator (receives original query + all reformulations + fused context)
+       → Answer
+```
+
+### Key Components
+
+| Component | Responsibility |
+|---|---|
+| Query Expander (LLM) | Generates N diverse reformulations (paraphrases, perspective shifts, sub-questions) of the original query |
+| Parallel Retrievers | Run one retrieval per query variant concurrently against the vector/keyword index |
+| RRF Merger | Fuses the N ranked result lists into a single ranked list using `1/(k+rank)` scoring |
+| Generator | Produces the final answer from the fused top-k context, aware of all query variants considered |
+
+### Tools & Frameworks
+
+| Category | Example Tools & Frameworks |
+|---|---|
+| Query expansion | LangChain `MultiQueryRetriever`, custom LLM prompting (GPT-3.5/Haiku for speed) |
+| Rank fusion | Custom RRF implementation, `rank_bm25` + RRF utilities |
+| Vector stores | Pinecone, Weaviate, Chroma, Qdrant |
+| Hybrid retrieval | Elasticsearch/OpenSearch (BM25) combined with dense vector search |
+| Reranking (optional) | Cross-encoders (ms-marco-MiniLM) applied after RRF fusion |
+
+---
+
 ## Q1. What is RAG-Fusion and how does it differ from standard RAG? `[Basic]`
 
 <details>

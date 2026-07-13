@@ -4,6 +4,50 @@
 
 ---
 
+## 🏗️ Architecture Flow, Components & Tools
+
+### Architecture Flow
+
+```
+User Query
+    │
+    ▼
+Query Planner (decides search strategy, formulates one or more search queries)
+    │
+    ▼
+Web Search Tool Call (search API)
+    │
+    ▼
+Page Fetcher / Parser (fetch top URLs, strip boilerplate, extract clean text)
+    │
+    ▼
+Citation Tracker (maps each claim to its source URL)
+    │
+    ▼
+Synthesizer (LLM generates the final answer with inline citations)
+```
+
+### Key Components
+
+| Component | Responsibility |
+|---|---|
+| Query Planner | Decides whether one or multiple searches are needed and formulates search-engine-friendly queries |
+| Web Search Tool | Calls a search API and returns candidate URLs, titles, and snippets |
+| Page Fetcher / Parser | Fetches pages over HTTP and extracts clean main-content text, discarding boilerplate |
+| Citation Tracker | Tracks which source URL backs each claim made in the final answer |
+| Synthesizer | LLM that generates the grounded answer, citing sources per claim |
+
+### Tools & Frameworks
+
+| Category | Example Tools & Frameworks |
+|---|---|
+| Search API | Tavily, Bing Search API, Google Custom Search, SerpAPI, Brave Search |
+| Page-to-text extraction | trafilatura, readability, BeautifulSoup |
+| Orchestration | LangChain / LlamaIndex web search tool wrappers |
+| Agent loop | Anthropic tool-use (function calling) for iterative, multi-step search |
+
+---
+
 ## Q1. What is Agentic Web RAG and how does it differ from corpus-based RAG? `[Basic]`
 
 <details>

@@ -4,6 +4,49 @@
 
 ---
 
+## 🏗️ Architecture Flow, Components & Tools
+
+### Architecture Flow
+
+```
+User Query
+    │
+    ▼
+Query Complexity Classifier
+    │
+    ├─ Simple   → No-Retrieval Path  ─────────► Generator ──► Answer
+    │             (direct LLM generation)
+    │
+    ├─ Moderate → Single-Hop Retriever ────────► Generator ──► Answer
+    │             (embed → vector DB → top-k)
+    │
+    └─ Complex  → Multi-Hop Retrieval Loop ────► Generator ──► Answer
+                  (retrieve → reason → retrieve → ... → answer)
+```
+
+### Key Components
+
+| Component | Responsibility |
+|---|---|
+| Query Complexity Classifier | Scores query difficulty (simple/moderate/complex) to drive routing |
+| Router | Applies calibrated thresholds to send the query down one of three paths |
+| No-Retrieval Path | Answers directly from the LLM's parametric knowledge |
+| Single-hop Retriever | One embed + vector search + generate pass |
+| Multi-hop Retrieval Loop | Iteratively retrieves and reasons across sub-queries |
+| Generator | Produces the final answer from the (optional) retrieved context |
+
+### Tools & Frameworks
+
+| Category | Example Tools & Frameworks |
+|---|---|
+| Classifier | Fine-tuned T5-large / DistilBERT / DeBERTa, or a small prompted LLM classifier |
+| Orchestration / routing | LangGraph, custom routing middleware |
+| Vector DB (single/multi-hop) | Qdrant, Weaviate, Pinecone with HNSW ANN |
+| Uncertainty escalation | FLARE-style token-probability monitoring |
+| Generation | GPT-4/Claude/Llama variants sized per tier |
+
+---
+
 ## Q1. What is Adaptive RAG and how does it differ from fixed-pipeline RAG? `[Basic]`
 
 <details>

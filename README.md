@@ -10,10 +10,10 @@
 
 
 <p align="center">
-  <img src="assets/logos/image.png" alt="RAG (Retrieval-Augmented Generation) Interview Questions and Answers — 505 Q&A covering 41 architectures and production failure modes" width="800" />
+  <img src="assets/logos/image.png" alt="RAG (Retrieval-Augmented Generation) Interview Questions and Answers — 512 Q&A covering 41 architectures and production failure modes" width="800" />
 </p>
 
-**505 RAG (Retrieval-Augmented Generation) interview questions and answers** for AI engineers, ML engineers, and GenAI/LLM developers. Covers all 41 RAG architectures, system design scenarios, vector databases, embeddings, chunking, reranking, evaluation, and the production failure modes that come up in real LLM engineering interviews.
+**512 RAG (Retrieval-Augmented Generation) interview questions and answers** for AI engineers, ML engineers, and GenAI/LLM developers. Covers all 41 RAG architectures, system design scenarios, vector databases, embeddings, chunking, reranking, evaluation, and the production failure modes that come up in real LLM engineering interviews.
 
 ⭐ **Star this repo** if it helps your interview prep — it keeps the project growing.
 
@@ -58,11 +58,11 @@
 | 01l | [Knowledge Graph Construction](./01_concepts/knowledge_graph_construction.md) | Entity extraction, relation extraction, KG maintenance | 4 |
 | 01m | [Caching Strategies](./01_concepts/caching_strategies.md) | Semantic cache, KV preloading, invalidation, cost/freshness trade-offs | 4 |
 | 01n | [Cost Optimization](./01_concepts/cost_optimization.md) | Model tiering, prompt caching, quantization, batching | 4 |
-| 01o | [Agentic Orchestration](./01_concepts/agentic_orchestration.md) | Tool-call loops, stopping criteria, ReAct vs. plan-and-execute | 3 |
+| 01o | [Agentic Orchestration](./01_concepts/agentic_orchestration.md) | Tool-call loops, stopping criteria, ReAct vs. plan-and-execute, full pipeline architecture | 7 |
 | 01p | [Multimodal Embeddings](./01_concepts/multimodal_embeddings.md) | CLIP, ImageBind, cross-modal alignment, vision-language models | 3 |
 | 01q | [Conversational Memory Architecture](./01_concepts/conversational_memory_architecture.md) | Working/episodic/long-term memory, MemGPT paging, session detection | 3 |
 
-**Core Concepts Total: 34 questions across 17 files**
+**Core Concepts Total: 38 questions across 17 files**
 
 ### ❓ RAG Architecture Interview Questions (41 Types)
 
@@ -71,7 +71,7 @@
 | 02.01 | [Naive / Basic RAG](./02_interview_bank/01-naive-rag.md) | 12 |
 | 02.02 | [Advanced RAG](./02_interview_bank/02-advanced-rag.md) | 12 |
 | 02.03 | [Modular RAG](./02_interview_bank/03-modular-rag.md) | 12 |
-| 02.04 | [Agentic RAG](./02_interview_bank/04-agentic-rag.md) | 12 |
+| 02.04 | [Agentic RAG](./02_interview_bank/04-agentic-rag.md) | 15 |
 | 02.05 | [Graph RAG](./02_interview_bank/05-graph-rag.md) | 12 |
 | 02.06 | [Corrective RAG (CRAG)](./02_interview_bank/06-corrective-rag.md) | 12 |
 | 02.07 | [Self-RAG](./02_interview_bank/07-self-rag.md) | 12 |
@@ -110,7 +110,7 @@
 | 02.40 | [SURGE (Schema-Grounded RAG)](./02_interview_bank/40-surge-structured-grounded-rag.md) | 3 |
 | 02.41 | [Recursive Document Summarization RAG](./02_interview_bank/41-recursive-document-summarization-rag.md) | 3 |
 
-**RAG Architectures Total: 392 questions**
+**RAG Architectures Total: 395 questions**
 
 ### ⚠️ Failure Modes & Production Issues
 
@@ -128,7 +128,7 @@
 
 **Failure Modes Total: 79 questions**
 
-**Grand Total: 505 questions**
+**Grand Total: 512 questions**
 
 **Difficulty distribution: ~50 Basic, ~185 Intermediate, ~270 Advanced**
 
@@ -141,7 +141,7 @@ Hands-on Jupyter notebooks and composition pattern guides:
 | # | Section | Contents |
 |---|---------|----------|
 | 04 | [Patterns](./04_patterns/README.md) | Router + fallback, fan-out/fan-in, migration path, anti-patterns |
-| 06 | [Labs](./06_labs/README.md) | 4 Jupyter notebooks: Naive RAG → Hybrid RAG → Reranker → RAGAS Evaluation |
+| 06 | [Labs](./06_labs/README.md) | 5 Jupyter notebooks: Naive RAG → Hybrid RAG → Reranker → RAGAS Evaluation → Agentic RAG |
 | 08 | [Evaluation](./08_evaluation/README.md) | Golden dataset construction guide + RAGAS CI harness |
 
 ### 🔄 Coming Soon
@@ -386,6 +386,6 @@ For issues, questions, or general feedback:
 [license-shield]: https://img.shields.io/github/license/ather-techie/rag-interview-questions
 [license-url]: LICENSE
 [commits-shield]: https://img.shields.io/github/last-commit/ather-techie/rag-interview-questions
-[questions-shield]: https://img.shields.io/badge/questions-505-blue
+[questions-shield]: https://img.shields.io/badge/questions-512-blue
 [prs-shield]: https://img.shields.io/badge/PRs-welcome-brightgreen
 [prs-url]: CONTRIBUTING.md

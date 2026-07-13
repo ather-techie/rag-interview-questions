@@ -4,6 +4,61 @@
 
 ---
 
+## 🏗️ Architecture Flow, Components & Tools
+
+### Architecture Flow
+
+```
+FROZEN DATASTORE (trillion-token corpus, chunked ~64 tokens)
+        │  embedded ONCE by a frozen BERT-style encoder
+        ▼
+   MIPS / ANN Chunk Index (static, never rebuilt)
+        │
+        ▼  kNN retrieval keyed on current input chunk
+┌───────────────────────────┐
+│   kNN Chunk Retriever       │  retrieves K nearest neighbor
+│   (frozen embeddings)       │  chunks (+ continuations) for C_i
+└────────────┬──────────────── ┘
+             │ retrieved neighbor chunks
+             ▼
+┌─────────────────────────────────┐
+│ Bidirectional Neighbor Encoder    │
+└────────────┬─────────────────────┘
+             │ encoded neighbors
+             ▼
+┌───────────────────────────────────────┐
+│ Base Transformer (mostly frozen)        │
+│  self-attention over local context       │
+│  + Chunked Cross-Attention (CCA)         │◄─ neighbors of chunk C_i
+│    conditions generation of chunk C_i+1  │
+└────────────┬────────────────────────────── ┘
+             │ generate chunk C_i+1
+             ▼
+   repeat: retrieve neighbors for C_i+1 → inform C_i+2 → ...
+```
+
+### Key Components
+
+| Component | Responsibility |
+|---|---|
+| Frozen Datastore | Trillion-token corpus split into fixed chunks with stored continuations |
+| kNN Retriever | Frozen BERT embeddings + approximate nearest-neighbor search, run per chunk during generation |
+| Bidirectional Neighbor Encoder | Encodes retrieved neighbor chunks before they're used in cross-attention |
+| Chunked Cross-Attention (CCA) | Injects retrieved-neighbor representations into the transformer while preserving autoregressive causality |
+| Base Transformer | Mostly-frozen autoregressive LM interleaving standard self-attention with CCA layers |
+
+### Tools & Frameworks
+
+| Category | Example Tools & Frameworks |
+|---|---|
+| ANN / retrieval index | SCaNN, FAISS |
+| Model implementation | Custom transformer with CCA blocks (DeepMind internal; open reproductions e.g. RETRO++) |
+| Datastore infra | Large-scale distributed storage/sharding for a trillion-token chunk store |
+| Dedup / leakage control | n-gram / Jaccard deduplication tooling between datastore and evaluation sets |
+| Embedding model | Frozen BERT-style encoder for chunk embeddings |
+
+---
+
 ## Q1. What is RETRO and what is its central claim? `[Basic]`
 
 <details>

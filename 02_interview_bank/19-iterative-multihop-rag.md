@@ -4,6 +4,50 @@
 
 ---
 
+## 🏗️ Architecture Flow, Components & Tools
+
+### Architecture Flow
+
+```
+User Query
+  → Query Decomposer (splits into sub-questions or seeds the first hop)
+  → ┌─────────────── Iterative Loop ───────────────┐
+    │  Retriever (retrieves on current hop's query)  │
+    │       ↓                                        │
+    │  Reasoner (LLM reasons over accumulated         │
+    │       evidence, emits next CoT step / sub-Q)    │
+    │       ↓                                        │
+    │  Stopping-Criterion Controller                  │
+    │       (answer-marker? max-hops? no-new-docs?)   │
+    │       ↓ (loop if not satisfied)                 │
+    └─────────────────────────────────────────────────┘
+  → Evidence Accumulator (deduped passages + resolved facts across hops)
+  → Generator (synthesizes final answer from accumulated evidence, with provenance)
+```
+
+### Key Components
+
+| Component | Responsibility |
+|---|---|
+| Query Decomposer | Breaks the original question into an initial retrieval query or sub-question plan |
+| Retriever | Executes retrieval for the current hop's query against the index |
+| Reasoner | LLM reasons over retrieved evidence and generates the next hop's query or CoT step |
+| Loop / Stopping Controller | Decides whether to continue hopping (answer marker, max-hops cap, no-new-info check) |
+| Evidence Accumulator | Dedupes and carries forward passages/facts across hops, pruning to control context growth |
+| Generator | Produces the final answer from the full accumulated evidence chain, with per-hop provenance |
+
+### Tools & Frameworks
+
+| Category | Example Tools & Frameworks |
+|---|---|
+| Prompting patterns | IRCoT, Self-Ask, ITER-RETGEN |
+| Loop orchestration | LangGraph, custom retrieve-reason-loop controllers |
+| Retrieval | Standard vector DB (Qdrant, Pinecone, Weaviate) + BM25 hybrid |
+| Verification (optional) | Corrective-RAG-style per-hop evidence checks |
+| Evaluation | HotpotQA, 2WikiMultiHopQA, MuSiQue harnesses for per-hop recall |
+
+---
+
 ## Q1. What is Iterative / Multi-hop RAG and why is single-shot retrieval insufficient? `[Basic]`
 
 <details>

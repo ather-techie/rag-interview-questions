@@ -76,6 +76,62 @@ Toolformer APIs supported: Wikipedia search, calculator, calendar, QA model, mac
 
 ---
 
+## 🏗️ Architecture Flow, Components & Tools
+
+### Architecture Flow
+
+```
+Query
+  │
+  ▼
+RLHF-trained Policy Model
+  (decides next browser action: search / click / scroll / quote / done)
+  │
+  ▼
+┌─────────────────────────────────────────┐
+│         Browser Action Loop              │
+│  ┌───────────────────────────────────┐  │
+│  │ Action Executor                    │  │
+│  │  search(query) → result list       │  │
+│  │  click(n)      → page content      │  │
+│  │  scroll(dir)   → more of page      │  │
+│  │  quote(text)   → save as evidence  │  │
+│  └──────────────┬──────────────────────┘  │
+│                 │                          │
+│                 ▼                          │
+│         Citation Collector                 │
+│  (tracks quoted passages + source doc)     │
+│                 │                          │
+│      loop back to Policy Model             │
+│      until action == done                  │
+└─────────────────────────────────────────┘
+  │
+  ▼
+Answer Synthesizer
+  (produces final answer with inline citations
+   from the Citation Collector's evidence set)
+```
+
+### Key Components
+
+| Component | Responsibility |
+|---|---|
+| **RLHF-trained Policy Model** | Decides, at each step, whether to emit text or issue a browser action (search/click/scroll/quote/done) |
+| **Browsing Environment/Simulator** | Sandboxed, text-based web environment that executes actions and returns results/page content |
+| **Action Executor** | Dispatches `search`, `click`, `scroll`, `quote` calls against the browsing environment |
+| **Citation Collector** | Tracks each quoted passage alongside its source document for later attribution |
+| **Answer Synthesizer** | Composes the final answer, citing the collected evidence once the model emits `done` |
+
+### Tools & Frameworks
+
+| Category | Example Tools & Frameworks |
+|---|---|
+| **RLHF training** | Reward model + PPO training stack |
+| **Environment** | Sandboxed browser/search environment (text-based) |
+| **Data collection** | Human preference/demonstration data collection pipeline |
+
+---
+
 ## Architecture Comparison
 
 | Dimension | WebGPT (#39) | Agentic Web RAG (#31) | Standard RAG |

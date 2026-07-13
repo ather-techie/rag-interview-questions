@@ -4,6 +4,60 @@
 
 ---
 
+## 🏗️ Architecture Flow, Components & Tools
+
+### Architecture Flow
+
+```
+Question
+   │
+   ▼
+Token-level Generator ── drafts next tentative sentence
+   │
+   ▼
+Confidence Monitor ── inspects token probabilities
+   │
+   ├── confidence OK ──────────────► commit sentence
+   │
+   └── confidence LOW
+         │
+         ▼
+   Retrieval Trigger ── mask low-conf tokens / form query
+         │
+         ▼
+      Retriever ── fetch supporting passages
+         │
+         ▼
+  Resume Controller ── regenerate sentence with new context
+         │
+         ▼
+     commit sentence
+   │
+   ▼
+Loop until answer complete
+```
+
+### Key Components
+
+| Component | Responsibility |
+|---|---|
+| Token-level Generator | Drafts the next sentence and exposes per-token probabilities |
+| Confidence Monitor | Checks drafted tokens against threshold θ to detect uncertainty |
+| Retrieval Trigger | Converts the low-confidence span into a retrieval query (masking / question form) |
+| Retriever | Fetches passages for the triggered query, on demand, mid-generation |
+| Resume Controller | Regenerates the sentence with retrieved context and resumes the generation loop |
+
+### Tools & Frameworks
+
+| Category | Example Tools & Frameworks |
+|---|---|
+| Logprob-exposing LLMs | OpenAI API (logprobs), vLLM-served open models |
+| Custom decoding loop | Hand-rolled draft/check/retrieve/regenerate controller |
+| Retriever | Standard dense/hybrid vector search (FAISS, Elasticsearch) |
+| Reference implementation | Official FLARE repo (Jiang et al., 2023) |
+
+---
+
 ## Q1. What is FLARE and how does "active retrieval" differ from standard RAG? `[Basic]`
 
 <details>

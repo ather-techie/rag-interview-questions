@@ -4,6 +4,66 @@
 
 ---
 
+## 🏗️ Architecture Flow, Components & Tools
+
+### Architecture Flow
+
+```
+User Turn
+   │
+   ▼
+Session Manager ───────────────┐
+   │                           │
+   ▼                           │
+Short-Term Memory Buffer       │
+(recent turns / running        │
+ summary)                      │
+   │                           │
+   ▼                           │
+History-Aware Query Rewriter   │
+(resolves "it"/"they", merges  │
+ history + new message)        │
+   │                           │
+   ▼                           │
+   Retriever ───────────────────── Document Store (corpus)
+   │                           │
+   ▼                           │
+Long-Term Vector Memory ◄──────┘
+(user facts, preferences)
+   │
+   ▼
+Generator
+   │
+   ▼
+Response to User
+   │
+   ▼
+Memory Update (working memory + long-term store)
+```
+
+### Key Components
+
+| Component | Responsibility |
+|---|---|
+| Session Manager | Tracks the active conversation, turn ordering, and per-user/session state |
+| Short-term Memory Buffer | Holds recent turns verbatim (sliding window) or a running summary of older turns |
+| Long-term Vector Memory | Stores durable, embedded user facts/preferences retrievable across sessions |
+| History-aware Query Rewriter | Condenses history + new message into a standalone retrieval query, resolving coreference |
+| Retriever | Fetches relevant chunks from the document corpus and, in parallel, relevant long-term memory |
+| Generator | Produces the grounded response from the rewritten query, retrieved context, and memory |
+
+### Tools & Frameworks
+
+| Category | Example Tools & Frameworks |
+|---|---|
+| Conversation memory | LangChain ConversationBufferMemory, ConversationSummaryMemory |
+| Long-term / vector memory | LangChain VectorStoreRetrieverMemory, MemGPT / Letta |
+| Session state store | Redis, in-memory session cache |
+| Vector database | Pinecone, Weaviate, FAISS, pgvector |
+| Query rewriting | LLM prompting (GPT-4o-mini, Claude Haiku) for condensation |
+
+---
+
 ## Q1. What is Memory / Conversational RAG and how does it differ from single-turn RAG? `[Basic]`
 
 <details>

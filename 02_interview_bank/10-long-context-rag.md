@@ -4,6 +4,56 @@
 
 ---
 
+## 🏗️ Architecture Flow, Components & Tools
+
+### Architecture Flow
+
+```
+        Query + minimally-chunked (or whole) documents
+                            │
+                            ▼
+          Optional coarse filter / retrieval
+          (BM25 + vector search narrows corpus
+           to top-N relevant documents)
+                            │
+                            ▼
+               Context Assembler
+        (stuff full documents into prompt,
+         bookend-order by relevance)
+                            │
+                            ▼
+              Long-Context LLM Generator
+         (Claude / Gemini / GPT — large window)
+                            │
+                    ┌───────┴───────┐
+                    ▼               ▼
+             Prompt Cache      Final Answer
+          (reuse KV cache for
+           repeated document
+           context on next query)
+```
+
+### Key Components
+
+| Component | Responsibility |
+|---|---|
+| Minimal Chunker (or none) | Splits only when a document exceeds the context window; otherwise passes whole documents |
+| Coarse Document Selector | BM25/vector pre-filter narrows a large corpus to the top-N docs worth stuffing into context |
+| Context Assembler | Orders and packs full documents into the prompt (bookend strategy to mitigate lost-in-the-middle) |
+| Long-Context LLM | Generates the answer directly from the large, stuffed context |
+| Prompt Cache | Caches the KV state of repeated document prefixes to cut cost/latency on follow-up queries |
+
+### Tools & Frameworks
+
+| Category | Example Tools & Frameworks |
+|---|---|
+| Long-context models | Claude (200K–1M context), Gemini 1.5/2.x (1M+ context), GPT-4.1/4o |
+| Prompt caching | Anthropic prompt caching, OpenAI prompt caching |
+| Coarse retrieval | BM25 (Elasticsearch/Lucene), vector DB (Pinecone, Qdrant) |
+| Compression (optional) | LLMLingua/LongLLMLingua, Selective Context, Recomp |
+
+---
+
 ## Q1. What is Long-context RAG and how does it differ from chunk-based RAG? `[Basic]`
 
 <details>

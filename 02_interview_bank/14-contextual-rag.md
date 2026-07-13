@@ -4,6 +4,57 @@
 
 ---
 
+## 🏗️ Architecture Flow, Components & Tools
+
+### Architecture Flow
+
+```
+Full Document
+    │
+    ▼
+Chunker (e.g., 512 tokens, structure-aware)
+    │
+    ▼
+Context Generator (LLM, full-doc prompt, prompt-cached)
+    │   → 1–2 sentence contextual prefix per chunk
+    ▼
+Contextualized Chunk = [prefix] + [chunk text]
+    │
+    ▼
+Embed ───────────────► Dense Vector Index
+    │
+    └─────────────────► BM25 Sparse Index (hybrid, optional)
+                             │
+                             ▼
+                     Hybrid Retriever (dense + sparse, RRF fusion)
+                             │
+                             ▼
+                         Generator ──► Answer
+```
+
+### Key Components
+
+| Component | Responsibility |
+|---|---|
+| Chunker | Splits documents into retrievable chunks |
+| Context Generator (LLM) | Produces a document-situating prefix for each chunk |
+| Embedder | Embeds the contextualized chunk text for dense retrieval |
+| Hybrid Index (dense+sparse) | Stores dense embeddings and BM25 terms for contextualized text |
+| Retriever | Fuses dense + sparse results (e.g., reciprocal rank fusion) |
+| Generator | Produces the answer from the original (non-prefixed) chunk text plus citations |
+
+### Tools & Frameworks
+
+| Category | Example Tools & Frameworks |
+|---|---|
+| Pattern | Anthropic Contextual Retrieval |
+| Cost optimization | Prompt caching (Claude) to amortize full-document cost across a document's chunks |
+| Embedding model | text-embedding-3-small, Voyage, BGE |
+| Sparse index | BM25 via Elasticsearch/Weaviate |
+| Reranking (optional) | Cross-encoder (e.g., ms-marco-MiniLM) |
+
+---
+
 ## Q1. What is Contextual Retrieval and what problem does it solve? `[Basic]`
 
 <details>

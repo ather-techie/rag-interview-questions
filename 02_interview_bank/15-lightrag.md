@@ -4,6 +4,60 @@
 
 ---
 
+## 🏗️ Architecture Flow, Components & Tools
+
+### Architecture Flow
+
+```
+Docs
+    │
+    ▼
+Entity-Relationship Extractor (LLM, per chunk)
+    │
+    ▼
+Entity Resolution / Deduplication
+    │
+    ▼
+Dual-level Graph Construction
+    ├─ Local:  entity-specific keys (nodes + 1-hop edges)
+    └─ Global: community/theme summaries (optional Leiden clustering)
+    │
+    ▼
+Incremental Graph Updater (insert / update / tombstone documents)
+    │
+    ▼
+Dual-level Hybrid Retriever
+    ├─ Local search  (entity-anchored traversal)
+    ├─ Global search (community/theme summaries)
+    └─ Naive search  (flat vector fallback)
+    │
+    ▼
+Generator ──► Answer
+```
+
+### Key Components
+
+| Component | Responsibility |
+|---|---|
+| Entity-Relation Extractor | LLM extracts entities and relationships per chunk |
+| Dual-level Graph Index | Stores local entity-centric keys and global community/theme keys |
+| Incremental Updater | Adds/updates/tombstones nodes and edges without a full rebuild |
+| Local Retriever | Entity-anchored 1-hop traversal for relational queries |
+| Global Retriever | Community-summary retrieval for synthesis queries |
+| Generator | Synthesizes the answer from merged local+global (or naive) context |
+
+### Tools & Frameworks
+
+| Category | Example Tools & Frameworks |
+|---|---|
+| Library | LightRAG (`pip install lightrag-hku`) |
+| Graph storage | NetworkX (default, small corpora), Neo4j (production scale) |
+| Community detection | Leiden algorithm (optional) |
+| Embedding model | BGE, OpenAI text-embedding-3-small |
+| Extraction LLM | GPT-4o-mini with structured-output entity/relationship extraction |
+
+---
+
 ## Q1. What is LightRAG and what problem does it solve over standard vector RAG? `[Basic]`
 
 <details>

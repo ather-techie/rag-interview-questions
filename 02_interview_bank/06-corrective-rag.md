@@ -4,6 +4,64 @@
 
 ---
 
+## 🏗️ Architecture Flow, Components & Tools
+
+### Architecture Flow
+
+```
+                     ┌──────────────────────┐
+                     │      User Query       │
+                     └───────────┬───────────┘
+                                 ▼
+                     ┌──────────────────────┐
+                     │      Retriever        │  (vector DB / hybrid search)
+                     └───────────┬───────────┘
+                                 │  top-k docs
+                                 ▼
+                     ┌──────────────────────┐
+                     │ Retrieval Evaluator   │  (T5 / prompted LLM judge)
+                     │  scores confidence    │
+                     └───────────┬───────────┘
+                                 │
+                  ┌──────────────┼──────────────┐
+                  ▼              ▼               ▼
+             Correct        Ambiguous        Incorrect
+                  │              │               │
+                  ▼              ▼               ▼
+           Use docs        Knowledge         Web Search
+           as-is           Refinement        Fallback
+                           (decompose-       (Tavily / Bing /
+                            recompose)        Google Search API)
+                  │              │               │
+                  └──────┬───────┴───────────────┘
+                         ▼
+                   ┌───────────┐
+                   │ Generator │
+                   └───────────┘
+```
+
+### Key Components
+
+| Component | Responsibility |
+|---|---|
+| Retriever | Fetches top-k candidate documents from the vector store for the query |
+| Retrieval Evaluator | Scores each retrieved doc's relevance/confidence and labels it Correct / Ambiguous / Incorrect |
+| Router | Directs the flow to generation, refinement, or web search based on the evaluator's label |
+| Knowledge Refinement (decompose-recompose) | Strips irrelevant sentences from ambiguous docs, keeps only relevant knowledge strips |
+| Web Search Fallback | Issues a rewritten query to an external search API when local docs are incorrect or ambiguous |
+| Generator | Produces the final answer from the refined and/or merged context |
+
+### Tools & Frameworks
+
+| Category | Example Tools & Frameworks |
+|---|---|
+| Evaluator model | Fine-tuned T5 (lightweight classifier), or a prompted GPT-4o-mini / Claude judge |
+| Web search fallback | Tavily API, Google Search API, Bing Search API |
+| Orchestration | LangGraph (conditional edges / router), LangChain |
+| Vector DB | Pinecone, Weaviate, Chroma, Qdrant |
+
+---
+
 ## Q1. What is Corrective RAG (CRAG) and what problem does it address? `[Basic]`
 
 <details>
