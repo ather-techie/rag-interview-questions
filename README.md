@@ -34,9 +34,9 @@
 
 ## 📚 Sections
 
-[Overview & Concepts](#-overview--concepts) · [RAG Architecture Interview Questions](#-rag-architecture-interview-questions-41-types) · [Failure Modes & Production Issues](#-failure-modes--production-issues) · [Labs & Patterns](#-labs--patterns) · [Coming Soon](#-coming-soon)
+[Getting Started](#-getting-started) · [Core Concepts](#-core-concepts) · [RAG Architecture Interview Questions](#-rag-architecture-interview-questions-41-types) · [Failure Modes & Production Issues](#-failure-modes--production-issues) · [Labs & Patterns](#-labs--patterns) · [Coming Soon](#-coming-soon)
 
-### 📖 Overview & Concepts
+### 🗺️ Getting Started
 
 | # | Topic | Purpose | Questions |
 |---|-------|---------|-----------|
@@ -44,6 +44,11 @@
 | 00b | [RAG Taxonomy](./00_overview/rag_taxonomy.md) | Classification framework for all 41 architectures across 4 axes | – |
 | 00c | [Learning Path](./00_overview/learning_path.md) | Structured curriculum and study plans | – |
 | 00d | [System Design Principles](./00_overview/system_design_principles.md) | Production-grade architecture patterns | – |
+
+### 📖 Core Concepts
+
+| # | Topic | Purpose | Questions |
+|---|-------|---------|-----------|
 | 01a | [Embeddings](./01_concepts/embeddings.md) | Embedding models, similarity metrics, and fine-tuning | 2 |
 | 01b | [Chunking Strategies](./01_concepts/chunking_strategies.md) | Document splitting and chunk optimization | 2 |
 | 01c | [Vector Databases](./01_concepts/vector_databases.md) | Storage, indexing, and hybrid search | 2 |
@@ -317,24 +322,26 @@ Semantic Cache Leakage  [NEW]
 
 ## 💡 How to Use
 
-**Four content types:**
+**Five content types:**
 
-1. **Overview & Concepts (00_overview/, 01_concepts/)** — Reference material, mostly not Q&A
+1. **Getting Started (00_overview/)** — Roadmap, taxonomy, learning path, and system design principles for orientation
+
+2. **Core Concepts (01_concepts/)** — Reference material, mostly not Q&A
    - Read these first to build foundational understanding
-   - Each file in 01_concepts/ opens with a plain "What is X?" definition before going deep
+   - Each file opens with a plain "What is X?" definition before going deep
    - Comparison tables, ASCII diagrams, code examples, and system design patterns
    - Use to answer conceptual questions and understand mechanisms deeply
 
-2. **Interview Questions (02_interview_bank/)** — 12 questions per architecture
+3. **Interview Questions (02_interview_bank/)** — 12 questions per architecture
    - Each section contains interview-style Q&A with detailed answers
    - Every section: original 10 questions + Q11 on cost optimization + Q12 on security
    - Questions are tagged with difficulty: `[Basic]` `[Intermediate]` `[Advanced]`
 
-3. **Failure Modes (03_failure_modes/)** — 10 questions per failure pattern
+4. **Failure Modes (03_failure_modes/)** — 10 questions per failure pattern
    - Seven critical production failure scenarios with diagnostic Q&A
    - Use for system design rounds and production-readiness discussions
 
-4. **CHEATSHEET (cheatsheets/CHEATSHEET.md)** — Quick reference
+5. **CHEATSHEET (cheatsheets/CHEATSHEET.md)** — Quick reference
    - All 41 RAG types compared in one table
    - Use during phone screens or quick prep
 
