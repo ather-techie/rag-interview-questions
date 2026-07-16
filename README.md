@@ -143,6 +143,7 @@ Hands-on Jupyter notebooks and composition pattern guides:
 | 04 | [Patterns](./04_patterns/README.md) | Router + fallback, fan-out/fan-in, migration path, anti-patterns |
 | 06 | [Labs](./06_labs/README.md) | 5 Jupyter notebooks: Naive RAG → Hybrid RAG → Reranker → RAGAS Evaluation → Agentic RAG |
 | 08 | [Evaluation](./08_evaluation/README.md) | Golden dataset construction guide + RAGAS CI harness |
+| 09 | [Tools](./09_tools/README.md) | Eval & observability tool comparison (Ragas, TruLens, DeepEval, LlamaIndex eval, LangChain eval); vector DB & framework comparisons still planned |
 
 ### 🔄 Coming Soon
 
@@ -150,7 +151,6 @@ Hands-on Jupyter notebooks and composition pattern guides:
 |---|---------|--------|
 | 05 | [Graphs](./05_graphs/README.md) | Planned |
 | 07 | [Simulator](./07_simulator/README.md) | Planned |
-| 09 | [Tools](./09_tools/README.md) | Planned |
 | 10 | [Decision System](./10_decision_system/README.md) | Planned |
 
 ---

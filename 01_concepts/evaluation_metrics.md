@@ -313,6 +313,19 @@ print(faith_score)  # Output: 0.95
 
 ---
 
+## Vendor Naming: Groundedness & Context Relevancy
+
+Different frameworks name overlapping concepts differently. Two terms show up constantly in interviews and vendor docs but aren't defined above under their own name — here's how they map onto the RAGAS terms already covered:
+
+- **Groundedness** (TruLens, Azure AI, Vertex AI) is the same concept as **Faithfulness** (RAGAS): the extent to which claims in the answer can be attributed back to the retrieved source text. TruLens frames it as one leg of its **"RAG Triad"** — Context Relevance, Groundedness, Answer Relevance — but the underlying question ("is every claim backed by context?") is identical to RAGAS's Faithfulness.
+- **Context Relevancy** (TruLens, and RAGAS's own NVIDIA-metrics extension) asks the same broad question as **Context Precision** ("is the retrieved context relevant to the query?") but scores each retrieved chunk's relevance independently, rather than being rank-aware. Context Precision specifically rewards relevant chunks being ranked *higher* in the result list; Context Relevancy does not care about order, only about whether each chunk is on-topic.
+
+**Common misconception to avoid:** some secondary sources define Groundedness as "would the model need the context to answer at all?" (i.e., whether the model could have answered from parametric knowledge alone). That is a different, also-valid question — sometimes probed via counterfactual/no-context ablation — but it is not how TruLens, RAGAS, Azure AI, or Vertex AI define Groundedness. Don't conflate the two in an interview answer.
+
+See [Observability & Evaluation Ops](./observability_and_evaluation_ops.md#tooling-comparison) for the TruLens tooling comparison, and [09_tools/01-eval-observability-comparison.md](../09_tools/01-eval-observability-comparison.md) for a fuller Ragas vs. TruLens vs. DeepEval vs. LlamaIndex vs. LangChain comparison.
+
+---
+
 ## The RAGAS Framework
 
 RAGAS (Retrieval-Augmented Generation Assessment) is the gold standard for LLM-based evaluation.
