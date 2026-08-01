@@ -502,6 +502,8 @@ Local search behaves like standard KG-RAG: it uses vector similarity to find ent
 
 **Q: When would you choose a knowledge graph over pure vector retrieval?** `[Advanced]`
 
+Choose a KG when: (1) queries require multi-hop reasoning across entities, (2) you need to retrieve by relationship type ("find all companies Apple acquired"), (3) entity deduplication is important for answer quality (multiple docs refer to the same entity differently), or (4) the domain has a well-defined ontology (medical codes, legal concepts, product hierarchies). Stick with vector retrieval when queries are primarily semantic/free-form, the corpus lacks clear entity structure, or build time is constrained.
+
 ---
 
 ## Related
@@ -510,5 +512,3 @@ Local search behaves like standard KG-RAG: it uses vector similarity to find ent
 - [LightRAG](../02_interview_bank/15-lightrag.md) — dual-level graph indexing for efficient graph-based retrieval
 - [HippoRAG](../02_interview_bank/20-hipporag.md) — neurobiologically-inspired graph memory for long-term retrieval
 - [Agentic Orchestration](./agentic_orchestration.md) — coordinating multi-hop graph traversal within agent workflows
-
-Choose a KG when: (1) queries require multi-hop reasoning across entities, (2) you need to retrieve by relationship type ("find all companies Apple acquired"), (3) entity deduplication is important for answer quality (multiple docs refer to the same entity differently), or (4) the domain has a well-defined ontology (medical codes, legal concepts, product hierarchies). Stick with vector retrieval when queries are primarily semantic/free-form, the corpus lacks clear entity structure, or build time is constrained.
