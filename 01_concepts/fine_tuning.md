@@ -170,30 +170,50 @@ Larger batch = more in-batch negatives = stronger signal. This is why embedding 
 ### Bi-Encoder Fine-Tuning (sentence-transformers)
 
 ```python
-from sentence_transformers import SentenceTransformer, InputExample, losses
-from torch.utils.data import DataLoader
+from datasets import Dataset
+from sentence_transformers import (
+    SentenceTransformer,
+    SentenceTransformerTrainer,
+    SentenceTransformerTrainingArguments,
+    losses,
+)
 
 model = SentenceTransformer("BAAI/bge-base-en-v1.5")
 
-# (query, positive) pairs — in-batch negatives are implicit.
-# Optionally add explicit hard negatives as a third text.
-train_examples = [
-    InputExample(texts=["error code E-4012 dishwasher",
-                        "Error E-4012 indicates a drain pump fault..."]),
-    InputExample(texts=["coverage limit water damage condo policy",
-                        "Condominium policies cap water damage claims at...",
-                        "Water damage to vehicles is covered under..."]),  # hard negative
-    # ... thousands more
-]
+# (anchor, positive) pairs — in-batch negatives are implicit.
+# Optionally add an explicit hard negative as a third column.
+train_dataset = Dataset.from_dict({
+    "anchor": [
+        "error code E-4012 dishwasher",
+        "coverage limit water damage condo policy",
+    ],
+    "positive": [
+        "Error E-4012 indicates a drain pump fault...",
+        "Condominium policies cap water damage claims at...",
+    ],
+    "negative": [
+        "Error E-2201 relates to the heating element...",
+        "Water damage to vehicles is covered under...",  # hard negative
+    ],
+    # ... thousands more rows
+})
 
-train_dataloader = DataLoader(train_examples, shuffle=True, batch_size=64)
 train_loss = losses.MultipleNegativesRankingLoss(model)  # InfoNCE-style
 
-model.fit(
-    train_objectives=[(train_dataloader, train_loss)],
-    epochs=1,            # 1–3 epochs; contrastive FT overfits fast
+args = SentenceTransformerTrainingArguments(
+    output_dir="./bge-base-finetuned-domain",
+    num_train_epochs=1,              # 1–3 epochs; contrastive FT overfits fast
+    per_device_train_batch_size=64,
     warmup_steps=100,
 )
+
+trainer = SentenceTransformerTrainer(
+    model=model,
+    args=args,
+    train_dataset=train_dataset,
+    loss=train_loss,
+)
+trainer.train()
 model.save("./bge-base-finetuned-domain")
 ```
 
@@ -202,27 +222,42 @@ model.save("./bge-base-finetuned-domain")
 The reranker is often the *better first fine-tuning target*: it needs less data, and — critically — **no re-indexing** when it changes.
 
 ```python
-from sentence_transformers import CrossEncoder, InputExample
-from torch.utils.data import DataLoader
+from datasets import Dataset
+from sentence_transformers import CrossEncoder, CrossEncoderTrainer, CrossEncoderTrainingArguments
+from sentence_transformers.cross_encoder.losses import BinaryCrossEntropyLoss
 
 model = CrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2", num_labels=1)
 
 # Explicit binary labels: 1 = relevant, 0 = not relevant
-train_examples = [
-    InputExample(texts=["error code E-4012 dishwasher",
-                        "Error E-4012 indicates a drain pump fault..."], label=1),
-    InputExample(texts=["error code E-4012 dishwasher",
-                        "Error E-2201 relates to the heating element..."], label=0),
-    # ... include mined hard negatives as label=0
-]
+train_dataset = Dataset.from_dict({
+    "sentence1": [
+        "error code E-4012 dishwasher",
+        "error code E-4012 dishwasher",
+    ],
+    "sentence2": [
+        "Error E-4012 indicates a drain pump fault...",
+        "Error E-2201 relates to the heating element...",
+    ],
+    "label": [1, 0],
+    # ... include mined hard negatives as label=0, thousands more rows
+})
 
-train_dataloader = DataLoader(train_examples, shuffle=True, batch_size=32)
+train_loss = BinaryCrossEntropyLoss(model)
 
-model.fit(
-    train_dataloader=train_dataloader,
-    epochs=2,
+args = CrossEncoderTrainingArguments(
+    output_dir="./reranker-finetuned-domain",
+    num_train_epochs=2,
+    per_device_train_batch_size=32,
     warmup_steps=100,
 )
+
+trainer = CrossEncoderTrainer(
+    model=model,
+    args=args,
+    train_dataset=train_dataset,
+    loss=train_loss,
+)
+trainer.train()
 model.save("./reranker-finetuned-domain")
 ```
 
@@ -304,18 +339,53 @@ Operational implications:
 
 ---
 
-## Interview Gotchas
+## Interview Q&A
 
-1. **"We had bad retrieval, so we fine-tuned the embeddings" is a red flag answer.** The interviewer wants to hear the ladder: prompt → chunking → hybrid → reranker → fine-tune, with a *measured* plateau (e.g., Recall@10 stuck at 0.6 on a domain eval set) justifying the jump.
+**Q: A team says "we had bad retrieval, so we fine-tuned the embeddings." Why is that a red flag answer?** `[Intermediate]`
 
-2. **Know why hard negatives matter.** Random negatives are too easy — the model learns nothing. BM25/ANCE hard negatives are lexically close but irrelevant, which is exactly the boundary the model must learn. Also mention the false-negative poisoning risk.
+Because it skips the cheaper ladder of fixes: prompt/query rewriting → chunking → hybrid search → reranker → fine-tune. A strong answer demonstrates that fine-tuning was justified by a *measured* plateau — e.g., Recall@10 stuck at 0.60 on a domain eval set despite exhausting the cheaper steps — not just a hunch that the embedding model is the problem.
 
-3. **Fine-tune the reranker before the embeddings.** Less data needed, and no re-indexing — you can ship and iterate without touching the vector store. Many candidates miss this ordering.
+---
 
-4. **The re-index trap.** If asked "what happens after you deploy a fine-tuned embedding model?", the answer is: regenerate every vector, blue/green index cutover, and a plan for documents ingested mid-migration. Mixing vectors from two models in one index silently breaks similarity scores.
+**Q: Why do hard negatives matter more than random negatives in contrastive fine-tuning?** `[Intermediate]`
 
-5. **Synthetic data ≠ free lunch.** GPL/Promptagator-style generation works, but evaluate on *real* user queries — gains on synthetic eval sets often don't transfer if the LLM's query style differs from users'.
+Random (in-batch) negatives are usually trivially irrelevant, so the model learns almost nothing from them. Hard negatives — mined via BM25 or ANCE-style re-encoding with the training model itself — are lexically or semantically close to the query but not actually relevant, which is exactly the decision boundary the model needs to learn. The catch: hard-negative mining can surface **false negatives** (docs that are actually relevant but unlabeled), which poison training. Filter these out with a cross-encoder — if it scores a "negative" above ~0.9, drop it.
 
-6. **Quantify the data requirements.** ~1K pairs for LoRA-style adaptation, ~10K+ for full contrastive fine-tuning, ~150K examples for Self-RAG-style LLM training. Citing orders of magnitude signals hands-on experience.
+---
 
-7. **Catastrophic forgetting is the hidden failure mode.** A domain-fine-tuned embedding model can regress on general queries. Always report before/after on a general benchmark slice (e.g., BEIR subset), not just the domain set.
+**Q: Given the choice, should you fine-tune the reranker or the embedding model first?** `[Intermediate]`
+
+The reranker, in almost all cases. It needs less labeled data (pairwise cross-encoder tasks are more data-efficient than bi-encoder contrastive training) and — critically — requires **no re-indexing** when it changes, since it only rescores an already-retrieved candidate set. That means you can ship and iterate on a reranker fine-tune daily, while an embedding fine-tune forces a full corpus re-embed before you can even evaluate it in production.
+
+---
+
+**Q: What operationally happens after you deploy a fine-tuned embedding model into production?** `[Advanced]`
+
+Every vector in the corpus must be regenerated, because old and new embeddings live in incompatible vector spaces — you cannot mix vectors from two different model versions in one index without silently corrupting similarity scores. In practice this means: budgeting real compute cost and hours-to-days of pipeline time to re-embed the full corpus, using a blue/green index strategy (build the new index alongside the old one, then cut over atomically) rather than updating in place, and having a plan for documents ingested during the migration window so they don't get embedded with the wrong model version.
+
+---
+
+**Q: Is synthetic query generation (GPL/Promptagator-style) a free substitute for real training data?** `[Intermediate]`
+
+No. LLM-generated (query, chunk) pairs are useful when you have no usage logs, but the fine-tuned model risks overfitting to the *LLM's query phrasing style* rather than learning genuine domain semantics — you'll see large gains on a synthetic eval set that don't transfer to real user queries. Mitigations: always hold out a set of real, human-written queries for evaluation even if training data is synthetic, and mix paraphrase variants and multiple generation prompts when creating the synthetic data to reduce style overfitting.
+
+---
+
+**Q: Roughly how much training data do you need for the different fine-tuning approaches?** `[Basic]`
+
+Order-of-magnitude guidance: ~1,000–5,000 pairs for LoRA-style/light adaptation of an embedding model (few trainable parameters), ~10,000–50,000+ pairs for a full contrastive bi-encoder fine-tune (all parameters updated, needs broad coverage), and ~5,000–20,000 pairs for a cross-encoder reranker fine-tune (the pairwise task is more data-efficient). Below roughly 1,000 pairs, prefer prompt-level fixes or a better off-the-shelf model — fine-tuning on tiny data risks catastrophic forgetting of general semantics.
+
+---
+
+**Q: What is catastrophic forgetting in this context, and how do you detect it?** `[Advanced]`
+
+Catastrophic forgetting is when a domain-fine-tuned embedding model improves on domain queries but regresses on general-purpose semantics it previously handled well — because gradient updates optimized entirely for domain data can overwrite the broader representations learned during pretraining. You detect it by holding out a slice of general-domain queries (e.g., a BEIR subset) alongside your domain eval set, and reporting Recall@k/MRR/NDCG before vs. after fine-tuning on *both* slices. A healthy fine-tune shows a large domain-recall gain (e.g., +23pp) with only minor drift on the general slice (e.g., -3pp); a large drop on the general slice signals forgetting, not adaptation.
+
+---
+
+## Related
+
+- [Embeddings](./embeddings.md) — the bi-encoder architecture and query/document asymmetry that fine-tuning adapts to a domain
+- [Reranking](./reranking.md) — why the cross-encoder reranker is often the better first fine-tuning target
+- [Evaluation Metrics](./evaluation_metrics.md) — Recall@k, MRR, and NDCG in depth, used to justify and measure a fine-tune
+- [Cost Optimization](./cost_optimization.md) — weighing fine-tuning's upfront training cost against inference-time savings and quality gains

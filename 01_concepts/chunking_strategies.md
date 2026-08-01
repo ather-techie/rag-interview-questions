@@ -53,7 +53,7 @@ Your job as a system designer is to pick a point on this frontier based on your 
 
 ---
 
-## Strategy Catalog: 8 Approaches
+## Strategy Catalog: 9 Approaches
 
 ### 1. Fixed-Size with Overlap
 
@@ -155,7 +155,7 @@ def chunk_by_markdown_header(markdown_text: str) -> list[str]:
 **When to use:** Default choice for most text documents (news, blogs, docs)
 
 ```python
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 splitter = RecursiveCharacterTextSplitter(
     chunk_size=1000,
@@ -227,18 +227,21 @@ def chunk_code_aware(text: str) -> list[str]:
     in_function = False
     
     for line in text.split('\n'):
-        if line.startswith('def ') or line.startswith('class '):
+        is_definition = line.startswith('def ') or line.startswith('class ')
+        is_dedent = bool(line) and not line[0].isspace() and not is_definition
+        
+        if is_definition:
             if current:
                 chunks.append('\n'.join(current))
-            in_function = True
             current = [line]
+            in_function = True
+        elif in_function and is_dedent:
+            # A non-indented, non-blank line means the previous function/class ended.
+            chunks.append('\n'.join(current))
+            current = [line]
+            in_function = False
         else:
             current.append(line)
-        
-        if in_function and line and not line[0].isspace() and not line.startswith('def'):
-            chunks.append('\n'.join(current))
-            current = []
-            in_function = False
     
     if current:
         chunks.append('\n'.join(current))
@@ -309,7 +312,7 @@ Query → Embed → Retrieve Small Chunks (top-5) → Fetch Parent Chunks → Ge
 
 ```python
 def chunk_agentic(text: str, llm_client) -> list[str]:
-    """Use GPT to decide chunk boundaries."""
+    """Use an LLM to decide chunk boundaries."""
     # Slide a window over the document
     window_size = 2000  # tokens
     overlap = 500
@@ -317,9 +320,10 @@ def chunk_agentic(text: str, llm_client) -> list[str]:
     
     for i in range(0, len(text), window_size - overlap):
         window = text[i:i+window_size]
+        lines = window.split('\n')
         
         # Ask LLM where to split
-        prompt = f"""Given this text, suggest 2-3 natural break points where a human would split into separate chunks. Reply with line numbers only.
+        prompt = f"""Given this text, suggest 2-3 natural break points where a human would split into separate chunks. Reply with line numbers only, one per line.
 
 Text:
 {window}
@@ -327,15 +331,96 @@ Text:
 Break points (line numbers):"""
         
         response = llm_client.complete(prompt)
-        # Parse response, split accordingly
-        # ... implementation details
+        
+        # Parse the LLM's response into a sorted list of valid line-number break points
+        break_lines = sorted({
+            int(tok) for tok in response.split()
+            if tok.strip().isdigit() and 0 < int(tok) < len(lines)
+        })
+        
+        # Split this window's lines at the suggested break points
+        start = 0
+        for break_line in break_lines:
+            chunks.append('\n'.join(lines[start:break_line]))
+            start = break_line
+        chunks.append('\n'.join(lines[start:]))
         
     return chunks
 ```
 
 ---
 
-## Comparison Table: All 8 Strategies
+### 9. Late Chunking
+
+*Introduced by JinaAI (2024). Requires an embedding model that exposes token-level outputs.*
+
+**Mechanism:** All 8 strategies above embed chunks independently — each chunk is encoded without knowledge of what surrounds it. Late Chunking inverts this: embed the **entire document first** with a long-context embedding model, then pool the resulting token-level embeddings into chunk-sized windows.
+
+**Parameters:** chunk_boundaries (character spans, determined after embedding), max document length (bounded by the embedding model's context window, e.g., 8,192 tokens for JinaAI v3)
+
+**Pros:** Each chunk's embedding reflects full-document context (entity names, dates, titles mentioned elsewhere in the doc); no separate contextualization step needed
+**Cons:** Requires a token-level embedding model; document must fit in the model's context window; any edit forces re-embedding the whole document
+**When to use:** Corpora where chunks frequently omit necessary context (entity names/dates/titles that only appear at the top of the document) and queries use document-level vocabulary
+
+```
+Standard chunking:
+  Document → [Chunk 1] → Embed → vector_1
+             [Chunk 2] → Embed → vector_2   ← Chunk 2 has no context from Chunk 1
+
+Late Chunking:
+  Document → Full-document embedding (token-level) → [token_1, token_2, ..., token_N]
+           → Pool tokens for Chunk 1 window → vector_1  ← Contains cross-chunk context
+           → Pool tokens for Chunk 2 window → vector_2  ← Also contains full-doc context
+```
+
+**Why it preserves cross-chunk context:** Standard chunking splits "The growth rate improved to 23%" into a chunk that doesn't mention *which company* or *which quarter* — forcing the embedding model to work with a decontextualized fragment. In Late Chunking, when encoding "The growth rate improved to 23%", the model has already attended to the full document including "Acme Corp Q3 2024" — so the token embeddings for this passage reflect the company and quarter, even though those words aren't in the chunk.
+
+**Requirements:**
+
+| Requirement | Detail |
+|---|---|
+| **Embedding model** | Must expose token-level outputs (not just the [CLS] pooled vector) |
+| **Compatible models** | JinaAI Embeddings v3, `nomic-embed-text`, long-context bi-encoders |
+| **Context window** | Document must fit in the embedding model's context (JinaAI v3: 8,192 tokens) |
+
+```python
+from transformers import AutoTokenizer, AutoModel
+import torch
+
+model_name = "jinaai/jina-embeddings-v3"
+tokenizer = AutoTokenizer.from_pretrained(model_name)
+model = AutoModel.from_pretrained(model_name, trust_remote_code=True)
+
+def late_chunk_embed(document: str, chunk_boundaries: list[tuple[int, int]]):
+    """
+    chunk_boundaries: list of (start_char, end_char) for each chunk
+    Returns: list of embeddings, one per chunk
+    """
+    inputs = tokenizer(document, return_tensors="pt",
+                       return_offsets_mapping=True, truncation=True,
+                       max_length=8192)
+    offset_mapping = inputs.pop("offset_mapping")[0]  # (num_tokens, 2)
+
+    with torch.no_grad():
+        outputs = model(**inputs)
+    
+    token_embeddings = outputs.last_hidden_state[0]  # (num_tokens, hidden_dim)
+    
+    chunk_embeddings = []
+    for start_char, end_char in chunk_boundaries:
+        # Find token indices that fall within this chunk's character span
+        mask = (offset_mapping[:, 0] >= start_char) & (offset_mapping[:, 1] <= end_char)
+        chunk_tokens = token_embeddings[mask]
+        # Mean pool over the chunk's tokens
+        chunk_emb = chunk_tokens.mean(dim=0)
+        chunk_embeddings.append(chunk_emb.numpy())
+    
+    return chunk_embeddings
+```
+
+---
+
+## Comparison Table: All 9 Strategies
 
 | Strategy | Chunk Size Control | Semantic Coherence | Index Size | Latency | Implementation Complexity | When to Use |
 |----------|-------------------|-------------------|-----------|---------|--------------------------|------------|
@@ -347,6 +432,7 @@ Break points (line numbers):"""
 | Document-Aware | Varies | Highest | Medium | Moderate | High (type-specific) | Code, tables, mixed media |
 | Hierarchical | Full | High | 2x | Fast | Moderate (need relationships) | Long documents + context matters |
 | Agentic | N/A | Highest | Medium | Slowest | High (need LLM) | Critical documents, small corpus |
+| Late Chunking | Full | Highest (full-doc context) | Medium | Slow (index); fast (query) | High (needs token-level embedder) | Chunks lose context without doc-level info |
 
 ---
 
@@ -391,8 +477,8 @@ Query: "How does backpropagation work?"
 |-----------|-------------------|-----------------|-------------------|------------------|
 | Smaller chunk_size | ↑ (fewer irrelevant words) | ↓ (must retrieve more) | ↑ (more chunks) | ↓ (faster retrieval) |
 | Larger chunk_size | ↓ (more noise) | ↑ (more context) | ↓ (fewer chunks) | ↑ (slower retrieval) |
-| Larger overlap | ↑ (boundary effects reduced) | ↑ (redundancy helps) | ↑↑ (more chunks) | ↓ (faster retrieval, more to search) |
-| Smaller overlap | ↓ (boundary effects) | ↓ (gaps between chunks) | ↓ (fewer chunks) | ↑ (faster but risky) |
+| Larger overlap | ↑ (boundary effects reduced) | ↑ (redundancy helps) | ↑↑ (more chunks) | ↑ (more chunks to store/search, slightly slower) |
+| Smaller overlap | ↓ (boundary effects) | ↓ (gaps between chunks) | ↓ (fewer chunks) | ↓ (fewer chunks, faster but risks gaps) |
 
 **Calibration Method:** Grid search over chunk_size values against a labeled probe set.
 
@@ -532,7 +618,7 @@ def chunk_multilingual(text: str, language: str, tokenizer) -> list[str]:
 
 2. **Ignoring Overlap Entirely**
    - Problem: Information at chunk boundaries is lost
-   - Fix: Always use overlap ≥ 25% of chunk size
+   - Fix: Always use overlap of roughly 10-20% of chunk size
 
 3. **Using Same Chunk Size for All Document Types**
    - Problem: Code needs function-level splits, text needs sentence-level
@@ -562,103 +648,24 @@ def chunk_multilingual(text: str, language: str, tokenizer) -> list[str]:
 
 ---
 
-## Strategy 9: Late Chunking
+## Interview Q&A
 
-*Introduced by JinaAI (2024). Requires an embedding model that exposes token-level outputs.*
-
-### What It Is
-
-All 8 strategies above embed chunks independently — each chunk is encoded without knowledge of what surrounds it. **Late Chunking** inverts this: embed the **entire document first** with a long-context embedding model, then pool the resulting token-level embeddings into chunk-sized windows.
-
-```
-Standard chunking:
-  Document → [Chunk 1] → Embed → vector_1
-             [Chunk 2] → Embed → vector_2   ← Chunk 2 has no context from Chunk 1
-
-Late Chunking:
-  Document → Full-document embedding (token-level) → [token_1, token_2, ..., token_N]
-           → Pool tokens for Chunk 1 window → vector_1  ← Contains cross-chunk context
-           → Pool tokens for Chunk 2 window → vector_2  ← Also contains full-doc context
-```
-
-### Why It Preserves Cross-Chunk Context
-
-Standard chunking splits "The growth rate improved to 23%" into a chunk that doesn't mention *which company* or *which quarter* — forcing the embedding model to work with a decontextualized fragment.
-
-In Late Chunking, when encoding "The growth rate improved to 23%", the model has already attended to the full document including "Acme Corp Q3 2024" — so the token embeddings for this passage reflect the company and quarter, even though those words aren't in the chunk.
-
-### Requirements
-
-| Requirement | Detail |
-|---|---|
-| **Embedding model** | Must expose token-level outputs (not just the [CLS] pooled vector) |
-| **Compatible models** | JinaAI Embeddings v3, `nomic-embed-text`, long-context bi-encoders |
-| **Context window** | Document must fit in the embedding model's context (JinaAI v3: 8,192 tokens) |
-
-### Trade-offs
-
-| | Standard Chunking | Late Chunking |
-|---|---|---|
-| **Cross-chunk context** | None — each chunk encoded in isolation | Full — each chunk sees entire document |
-| **Update cost** | Re-embed only changed chunks | Must re-embed entire document when any chunk changes |
-| **Max doc size** | No limit (chunk independently) | Limited by embedding model context window |
-| **Model requirement** | Any embedding model | Requires token-level output support |
-| **Latency (index)** | Low per chunk | Higher — full document encoded once per update |
-| **Retrieval quality** | Lower for context-dependent queries | Higher for queries using document-level vocabulary |
-
-### When to Use
-
-- Corpus where individual chunks frequently omit necessary context (entity names, dates, document titles appear only at the top of the document).
-- Queries that use vocabulary from the document header, not the specific chunk.
-- Already using JinaAI or nomic-embed-text — token-level outputs are available at no extra cost.
-
-### Implementation Sketch
-
-```python
-from transformers import AutoTokenizer, AutoModel
-import torch
-
-model_name = "jinaai/jina-embeddings-v3"
-tokenizer = AutoTokenizer.from_pretrained(model_name)
-model = AutoModel.from_pretrained(model_name, trust_remote_code=True)
-
-def late_chunk_embed(document: str, chunk_boundaries: list[tuple[int, int]]):
-    """
-    chunk_boundaries: list of (start_char, end_char) for each chunk
-    Returns: list of embeddings, one per chunk
-    """
-    inputs = tokenizer(document, return_tensors="pt",
-                       return_offsets_mapping=True, truncation=True,
-                       max_length=8192)
-    offset_mapping = inputs.pop("offset_mapping")[0]  # (num_tokens, 2)
-
-    with torch.no_grad():
-        outputs = model(**inputs)
-    
-    token_embeddings = outputs.last_hidden_state[0]  # (num_tokens, hidden_dim)
-    
-    chunk_embeddings = []
-    for start_char, end_char in chunk_boundaries:
-        # Find token indices that fall within this chunk's character span
-        mask = (offset_mapping[:, 0] >= start_char) & (offset_mapping[:, 1] <= end_char)
-        chunk_tokens = token_embeddings[mask]
-        # Mean pool over the chunk's tokens
-        chunk_emb = chunk_tokens.mean(dim=0)
-        chunk_embeddings.append(chunk_emb.numpy())
-    
-    return chunk_embeddings
-```
-
----
-
-## Additional Interview Questions
-
-**Q: How do you chunk code files vs. prose documents?**
+**Q: How do you chunk code files vs. prose documents?** `[Intermediate]`
 
 Prose uses linguistic boundaries (sentences, paragraphs); code has semantic boundaries defined by its AST (Abstract Syntax Tree). For code: (1) **Function/method level** is the natural chunk unit — one function per chunk preserves the callable signature, docstring, and body as a unit. (2) **Class level** for small classes; split large classes by methods. (3) Use language-specific parsers (`tree-sitter`, Python's `ast` module) to extract exact boundary positions rather than splitting on newlines — a newline mid-expression is not a semantic boundary. (4) Preserve the full function signature even when the body is truncated (for long functions). (5) For file-level context (imports, class hierarchy), prepend a "file header" context block to each chunk similar to Contextual Retrieval. Never use fixed-character chunking for code — it will split in the middle of function signatures and break semantics.
 
 ---
 
-**Q: How would you chunk a 200-page PDF financial report with mixed text, tables, and charts?**
+**Q: How would you chunk a 200-page PDF financial report with mixed text, tables, and charts?** `[Advanced]`
 
-A mixed-content PDF requires content-type-aware chunking rather than a single strategy: (1) **Detect content types** — use pdfplumber or PyMuPDF to identify text regions, table bounding boxes, and image regions separately. (2) **Text sections**: chunk by section headers (H1/H2 boundaries if detectable); within sections, use paragraph or sentence boundaries with 20% overlap. (3) **Tables**: extract with camelot or pdfplumber's table extractor; serialize as Markdown (column headers + rows); store as single chunks keyed by table title or position. Do not mix table rows with surrounding prose — they have different embedding characteristics. (4) **Charts/figures**: use a vision model (GPT-4V, Claude Sonnet) to generate a text description of each chart; embed the description, not the image. (5) **Cross-reference metadata**: tag each chunk with page number, section title, and document name — financial reports are often queried by section ("page 47, liquidity risk").
+A mixed-content PDF requires content-type-aware chunking rather than a single strategy: (1) **Detect content types** — use pdfplumber or PyMuPDF to identify text regions, table bounding boxes, and image regions separately. (2) **Text sections**: chunk by section headers (H1/H2 boundaries if detectable); within sections, use paragraph or sentence boundaries with 20% overlap. (3) **Tables**: extract with camelot or pdfplumber's table extractor; serialize as Markdown (column headers + rows); store as single chunks keyed by table title or position. Do not mix table rows with surrounding prose — they have different embedding characteristics. (4) **Charts/figures**: use a current multimodal/vision-capable LLM (e.g., GPT-4o, Claude, Gemini) to generate a text description of each chart; embed the description, not the image. (5) **Cross-reference metadata**: tag each chunk with page number, section title, and document name — financial reports are often queried by section ("page 47, liquidity risk").
+
+---
+
+## Related
+
+- [Embeddings](./embeddings.md)
+- [Retrieval Strategies](./retrieval_strategies.md)
+- [Cost Optimization](./cost_optimization.md)
+- [Document Ingestion and Parsing](./document_ingestion_and_parsing.md)
+- [Vector Databases](./vector_databases.md)

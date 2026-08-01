@@ -1,0 +1,32 @@
+# LangChain stack
+langchain
+langchain-community
+langchain-huggingface
+langchain-google-genai
+langchain-anthropic
+langchain-openai
+langchain-ollama
+
+# Retrieval & embeddings
+sentence-transformers
+chromadb
+huggingface_hub
+rank-bm25
+faiss-cpu
+numpy
+
+# Evaluation
+ragas
+datasets
+
+# Provider SDKs (see ai_client.py — dispatched via AI_PROVIDER)
+google-genai
+anthropic
+openai
+
+# Config
+python-dotenv
+
+# Notebook runtime
+jupyter
+ipykernel

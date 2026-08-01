@@ -114,7 +114,7 @@ def recall_at_k(retrieved_docs, relevant_docs, k=5):
 
 ### MRR (Mean Reciprocal Rank)
 
-**Definition:** Rank of the first relevant result (lower is better).
+**Definition:** Rank of the first relevant result (higher is better — a hit at rank 1 gives the maximum reciprocal rank of 1.0).
 
 **Formula:**
 ```
@@ -245,7 +245,7 @@ class RetrievalEvaluator:
 evaluator = RetrievalEvaluator(labeled_queries)
 scores = evaluator.evaluate(my_retriever)
 print(scores)
-# Output: {'precision@5': 0.78, 'recall@5': 0.82, 'mrr': 0.91, 'ndcg@5': 0.85, 'hit_rate': 0.92}
+# Output: {'precision@5': 0.78, 'recall@5': 0.82, 'mrr@5': 0.91, 'ndcg@5': 0.85, 'hit_rate': 0.92}
 ```
 
 ---
@@ -269,18 +269,20 @@ print(scores)
 **Gotcha:** A model that quotes the context verbatim will have high faithfulness but may not answer the question well.
 
 ```python
+from datasets import Dataset
 from ragas.metrics import faithfulness
 from ragas import evaluate
 
 # Evaluate a sample
-sample = {
-    'question': "What is RAG?",
-    'contexts': ["RAG is retrieval-augmented generation..."],
-    'answer': "RAG combines retrieval and generation."
+data = {
+    'question': ["What is RAG?"],
+    'contexts': [["RAG is retrieval-augmented generation..."]],
+    'answer': ["RAG combines retrieval and generation."]
 }
+dataset = Dataset.from_dict(data)
 
-faith_score = faithfulness.score(sample)
-print(faith_score)  # Output: 0.95
+result = evaluate(dataset, metrics=[faithfulness])
+print(result)  # Output: {'faithfulness': 0.95}
 ```
 
 ---
@@ -330,7 +332,7 @@ See [Observability & Evaluation Ops](./observability_and_evaluation_ops.md#tooli
 
 RAGAS (Retrieval-Augmented Generation Assessment) is the gold standard for LLM-based evaluation.
 
-**Key insight:** RAGAS doesn't require gold-standard answers. It evaluates by prompting the LLM itself.
+**Key insight:** Whether RAGAS needs a gold-standard answer depends on the metric. Faithfulness, Answer Relevancy, and Context Precision evaluate by prompting the LLM itself and don't require a reference answer. Context Recall (and Answer Correctness) are computed against a reference/gold answer, so they do require one.
 
 **The Four RAGAS Metrics:**
 1. **Faithfulness** (0–1): Claims supported by context
@@ -345,7 +347,7 @@ from datasets import Dataset
 from ragas import evaluate
 from ragas.metrics import (
     faithfulness,
-    answer_relevance,
+    answer_relevancy,
     context_precision,
     context_recall,
 )
@@ -362,14 +364,14 @@ dataset = Dataset.from_dict(data)
 # Evaluate
 scores = evaluate(
     dataset,
-    metrics=[faithfulness, answer_relevance, context_precision, context_recall]
+    metrics=[faithfulness, answer_relevancy, context_precision, context_recall]
 )
 
 print(scores)
 # Output:
 # {
 #   'faithfulness': 0.81,
-#   'answer_relevance': 0.88,
+#   'answer_relevancy': 0.88,
 #   'context_precision': 0.75,
 #   'context_recall': 0.72
 # }
@@ -561,15 +563,15 @@ def log_rag_metrics(query: str, retrieved_docs: list, answer: str):
 
 1. **Measure both retrieval and generation.** They're independent; both must be good.
 2. **Recall@5 and Faithfulness are your primary metrics.** Track them weekly.
-3. **RAGAS is gold standard** for generation evaluation (no gold labels needed).
+3. **RAGAS is gold standard** for generation evaluation (some metrics, like Faithfulness and Context Precision, need no gold labels; others, like Context Recall, do).
 4. **Always have a labeled probe set.** 50–100 representative queries minimum.
 5. **Divergence between metrics signals problems.** High recall + low faithfulness = fix the prompt, not retrieval.
 
 ---
 
-## Additional Interview Questions
+## Interview Q&A
 
-**Q: How do you evaluate RAG for subjective or open-ended questions where there is no single correct answer?**
+**Q: How do you evaluate RAG for subjective or open-ended questions where there is no single correct answer?** `[Advanced]`
 
 When there is no ground-truth answer string (e.g., "What are the pros and cons of HNSW vs. IVF?"), automated exact-match metrics are useless. Use two complementary approaches:
 
@@ -623,7 +625,7 @@ Key calibration requirement: always include human-labeled examples (with known c
 
 ---
 
-**Q: What metrics would you use to evaluate citation quality in a verifiable RAG system?**
+**Q: What metrics would you use to evaluate citation quality in a verifiable RAG system?** `[Advanced]`
 
 Citation quality has three distinct failure modes, each requiring a separate metric:
 

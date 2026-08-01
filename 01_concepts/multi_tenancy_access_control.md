@@ -127,6 +127,29 @@ ACLs are usually granted to *groups*; queries come from *users*. Someone has to 
 
 Rule of thumb: **expand the user at query time, never flatten groups into the index.** Group membership changes far more often than document ACLs.
 
+### Beyond Flat ACLs: Zanzibar / OpenFGA for Nested Permission Hierarchies
+
+Everything above models permissions as flat allow-lists per chunk (`allowed_users`, `allowed_groups`). That's sufficient when the source system already hands you a flattened list per document. It breaks down when access is *inherited through a hierarchy* — folder → team → org, or document → workspace → tenant — because "can Alice see this doc" now requires walking a graph of relationships, not checking membership in two flat lists.
+
+**Google Zanzibar** is the relationship-based access control (ReBAC) model behind Google's internal authorization system (paper: *"Zanzibar: Google's Consistent, Global Authorization System,"* USENIX ATC 2019), used to answer permission checks for Drive, YouTube, Calendar, and others at global scale (Google has reported 10M+ QPS, 99.999% availability, trillions of stored relationships, billions of users). Instead of per-object ACL rows, permissions are stored as relationship tuples of the form `<object>#<relation>@<user>` — e.g., `doc:planA#viewer@user:alice`, or `doc:planA#viewer@group:eng#member` (members of a group inherit the relation). A check like "can alice view doc:planA" walks this tuple graph, following per-relation rewrite rules (union/intersection/exclusion) until it resolves to a concrete user. This is strictly more expressive than flat ACLs or RBAC roles: it directly represents "viewer because member of the group that was granted viewer" or "editor because owner of the parent folder," without denormalizing every inherited grant onto every leaf object.
+
+**OpenFGA** is the open-source implementation of the Zanzibar model — a CNCF project (incubating as of November 2025; originated at Auth0/Okta, donated to CNCF in 2022). You define an authorization model — types (`document`, `folder`, `team`, `user`) and, per type, the relations it supports and who can hold them:
+
+```
+type document
+  relations
+    define parent: [folder]
+    define viewer: [user, team#member] or viewer from parent
+
+type folder
+  relations
+    define viewer: [user, team#member]
+```
+
+Relationship tuples then instantiate the model (`document:q3-plan#parent@folder:finance`, `folder:finance#viewer@team:finance-leads#member`), and a `Check` call answers "can user:bob view document:q3-plan" by traversing that graph — including the `viewer from parent` rewrite, so folder-level access flows down to every document inside it without a tuple per document.
+
+**Why this matters for RAG:** the flat `allowed_users`/`allowed_groups` filter earlier in this section is the right default when a connector already flattens permissions per document — most SaaS connectors do. It stops being sufficient once the system must reason about *inherited* access across a hierarchy the connector doesn't flatten (nested folders, team membership implying access to every team's resources, org-to-suborg delegation): "flatten at index time" reproduces the group-expansion staleness problem one hierarchy level deeper, and "expand at query time" now means a graph traversal (an OpenFGA-style `Check` call) rather than a set-intersection. In practice, the chunk metadata stays the same (`doc_id` + `tenant_id`), but the ACL predicate at query/late-binding time becomes "call the authorization service's Check API" instead of "intersect two sets." Worth naming this vocabulary in an interview when asked "what if permissions aren't already flat" — it signals awareness that ReBAC is a distinct, more expressive tier above RBAC/flat-ACL, not that you'd reimplement a relationship graph inside the vector DB's metadata filter.
+
 ---
 
 ## Filter-at-Query vs. Filter-Post-Retrieval
@@ -265,39 +288,6 @@ Logs must be append-only/tamper-evident, and note the recursion: the audit log n
 
 ---
 
-## Interview Gotchas
-
-### "Design RAG over SharePoint that respects permissions" — Canonical Outline
-
-1. **Clarify:** one org or multi-tenant? How fresh must permissions be (minutes vs. seconds)? Scale of users/groups? (Maps onto the requirements step in [system_design_principles.md](../00_overview/system_design_principles.md).)
-2. **Ingestion:** connector consumes SharePoint change feed → chunks + embeddings + per-chunk ACL metadata (site/library/item permissions resolved to users + groups).
-3. **Identity:** user authenticates via the IdP (Entra ID); query-time transitive group expansion, cached with short TTL.
-4. **Retrieval:** pre-filter inside ANN: `tenant + (user ∈ allowed_users OR groups ∩ allowed_groups)`.
-5. **Staleness defense:** late-binding permission check against SharePoint on the final top-k before generation; fail-closed on connector gaps.
-6. **Beyond retrieval:** ACL-aware citations, tenant+permission-set cache keys, zero-retention LLM endpoint.
-7. **Audit:** per-query log of user, filter, chunk IDs; cross-tenant probe tests; sync-lag SLO.
-
-Mentioning the **two-gate model** (cheap metadata pre-filter + authoritative late-binding check) and the **staleness window** is what separates a senior answer from "just add a metadata filter."
-
-### The Classic Trap: Post-Filter Stages Reintroducing Filtered Docs
-
-Any stage added *after* the ACL gate that has its own document access can leak:
-
-- A **reranker** that re-queries the index "for more candidates" without the filter.
-- A **semantic cache** that returns an answer generated under a *different* user's (broader) permissions.
-- A **"related documents" / link-expansion** step that follows hyperlinks from authorized chunks into unauthorized docs.
-- A **summarization memory** that condensed earlier (more privileged) sessions into reusable context.
-
-The principle to state: **authorization must be enforced at the last point where document content enters the prompt, and every component between retrieval and generation must be ACL-aware or content-blind.**
-
-### Other Gotchas Worth Pre-Loading
-
-- "Why not just filter the LLM's output?" — Because the content already left the boundary (provider logs) and LLM-as-guard is bypassable; filter inputs, not outputs.
-- "Highly selective filter killed recall — what happened?" — HNSW traversal stranded among ineligible nodes; answer: filterable-graph engines, brute-force fallback below a selectivity threshold, or per-tenant partitions so the filter is the partition.
-- "Tenant offboarding?" — Structural models make deletion easy (drop namespace/index — a GDPR argument *for* them); shared-index models require delete-by-filter plus verification that vectors are gone from index *and* backups.
-
----
-
 ## Key Takeaways
 
 1. **Isolation should be structural, not conventional.** Namespace/partition per tenant is the default; shared-index-plus-filter means one forgotten `WHERE` clause is a breach.
@@ -309,14 +299,44 @@ The principle to state: **authorization must be enforced at the last point where
 
 ---
 
-## Additional Interview Questions
+## Interview Q&A
 
-**Q: How do you handle real-time permission changes — for example, a user loses access to a document mid-session?**
+**Q: How would you design a RAG system over SharePoint that must respect existing document permissions?** `[Advanced]`
+
+Walk through it as seven steps, in order: (1) **Clarify** — one org or multi-tenant? How fresh must permissions be (minutes vs. seconds)? Scale of users/groups? (Maps onto the requirements step in [system_design_principles.md](../00_overview/system_design_principles.md).) (2) **Ingestion** — a connector consumes the SharePoint change feed and produces chunks + embeddings + per-chunk ACL metadata (site/library/item permissions resolved to users + groups). (3) **Identity** — the user authenticates via the IdP (Entra ID); transitive group membership is expanded at query time and cached with a short TTL. (4) **Retrieval** — pre-filter inside the ANN search: `tenant + (user ∈ allowed_users OR groups ∩ allowed_groups)`. (5) **Staleness defense** — a late-binding permission check against SharePoint on the final top-k before generation, failing closed on connector gaps. (6) **Beyond retrieval** — ACL-aware citations, tenant+permission-set cache keys, a zero-retention LLM endpoint. (7) **Audit** — a per-query log of user, filter, and chunk IDs, cross-tenant probe tests, and a sync-lag SLO. Naming the **two-gate model** (cheap metadata pre-filter + authoritative late-binding check) and the **staleness window** explicitly is what separates a senior answer from "just add a metadata filter."
+
+---
+
+**Q: What's the risk of adding a pipeline stage — a reranker, a cache, a "related documents" widget — after the ACL filter has already run?** `[Advanced]`
+
+Any stage added *after* the ACL gate that has its own access to document content can reintroduce a leak, even though retrieval itself was correctly filtered: a **reranker** that re-queries the index "for more candidates" without reapplying the filter; a **semantic cache** that returns an answer generated under a *different* user's (broader) permissions; a **"related documents" / link-expansion** step that follows hyperlinks from authorized chunks into unauthorized docs; or a **summarization memory** that condensed an earlier, more privileged session into reusable context. The principle to state: authorization must be enforced at the last point where document content enters the prompt, and every component between retrieval and generation must be ACL-aware or content-blind.
+
+---
+
+**Q: Why not just filter the LLM's output for restricted content instead of filtering what goes into the prompt?** `[Basic]`
+
+Because by the time restricted content reaches the LLM it has already crossed the trust boundary — it may be logged or retained by the model provider regardless of what the final answer says. Output filtering also relies on the LLM (or a second LLM-as-guard) to correctly recognize and strip every leak, and that step is bypassable the same way any LLM behavior is bypassable. Filter inputs — what gets retrieved — not outputs.
+
+---
+
+**Q: A highly selective ACL filter is tanking retrieval recall — what's happening, and how do you fix it?** `[Advanced]`
+
+When a user can see only a small slice of the corpus (say 0.1%), HNSW's greedy graph traversal can get stranded in regions where almost no node satisfies the filter, since most edges lead to ineligible vectors. Fixes: use a filterable-graph engine that builds extra links to keep filtered traversal connected (e.g., ACORN-style traversal), fall back to brute-force scan below a match-ratio threshold, or move to per-tenant/per-permission-class partitions so the filter *is* the partition boundary rather than a predicate layered on top of a shared graph.
+
+---
+
+**Q: How does tenant offboarding differ between a structurally isolated deployment and a shared-index-plus-filter deployment?** `[Intermediate]`
+
+Structural models (namespace, index, or cluster per tenant) make offboarding easy — drop the namespace or index, which also doubles as a clean answer to a GDPR/right-to-erasure question. Shared-index models require a delete-by-filter pass across every chunk belonging to the tenant, plus verification that the vectors are actually gone from both the live index *and* any backups or snapshots — an operation that's easy to get subtly wrong (partial deletes, tombstones lingering in the HNSW graph, or backups quietly retaining "deleted" vectors).
+
+---
+
+**Q: How do you handle real-time permission changes — for example, a user loses access to a document mid-session?** `[Advanced]`
 
 This is the ACL staleness problem at its most acute. Three layers needed: (1) **Short TTL on permission caches** — if ACLs are cached in the retrieval layer, set TTL to the acceptable staleness window (5–60 seconds for sensitive data). Every cache read should touch the permission store if the cached entry is older than TTL. (2) **Late-binding check on the final top-k** — after retrieval, re-verify the user's current permissions for each document in the final result set against the authoritative permission store (SharePoint API, database), not the index metadata. This is slower but eliminates stale-cache false positives. (3) **Session invalidation** — when a permission change event fires (via webhook, CDC, or audit log), invalidate any active sessions for that user that may have a cached answer containing the now-revoked document's content. If using a semantic cache, flush all cache entries whose source document IDs include the revoked document. The combination of late-binding + session invalidation means a user who loses access mid-session will be blocked at the next query, not at the next session.
 
 ---
 
-**Q: What are the security risks of using a semantic cache in a multi-tenant RAG system?**
+**Q: What are the security risks of using a semantic cache in a multi-tenant RAG system?** `[Advanced]`
 
 A semantic cache keyed only on query meaning — without a tenant or user scope — is a cross-tenant data leakage vector. If Tenant A asks "What is our Q3 revenue?" and the answer ($4.2M) is cached, Tenant B asking "Show me our Q3 revenue figures" may hit the cache and receive Tenant A's answer, since the query embeddings are semantically very close. Beyond the obvious: (1) **Timing side-channel** — a cache hit is 2ms vs. cache miss 200ms; Tenant B can infer whether a topic has been previously queried by another user just from response latency. (2) **Document-ID leakage in cache metadata** — implementations that cache retrieved chunk IDs alongside the answer expose which documents are relevant to a topic. (3) **Permission-change lag** — a cached answer may include content from a document that has since been classified as restricted; without permission-aware cache invalidation, the answer persists beyond the revocation. Mitigation: always namespace cache keys by tenant/user ID and include a hash of the user's current permission set in the key. See [09 — Semantic Cache Leakage](../03_failure_modes/09-semantic_cache_leakage.md).

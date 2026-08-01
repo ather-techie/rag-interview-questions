@@ -54,7 +54,7 @@ Training Example:
 - At retrieval time: embed query once, compare against pre-computed document vectors
 - Fast: O(1) retrieval after O(corpus_size) pre-computation
 - Trade-off: Cannot see both query and document simultaneously; less accurate but enables large-scale search
-- Used by: OpenAI embeddings, BGE, E5, Cohere Embed
+- Used by: OpenAI embeddings, BGE, E5, Cohere Embed, Voyage AI, Gemini Embedding
 
 **Cross-Encoder**
 - Encodes query and document together
@@ -73,16 +73,20 @@ Training Example:
 
 | Model | Dimensions | Context Window | License | MTEB Score | Best Use Case |
 |-------|-----------|-----------------|---------|-----------|---------------|
-| `text-embedding-3-small` | 512 | 8,192 | Proprietary | 62.3 | General-purpose (Recommended starting point) |
+| `text-embedding-3-small` | 1,536 (supports truncation to 512 via Matryoshka) | 8,192 | Proprietary | 62.3 | General-purpose (Recommended starting point) |
 | `text-embedding-3-large` | 3,072 | 8,192 | Proprietary | 64.6 | High-precision retrieval; supports Matryoshka |
 | `BGE-large-en-v1.5` | 1,024 | 512 | Apache 2.0 | 64.2 | Open-source alternative to OpenAI; good for English |
 | `E5-mistral-7b-instruct` | 4,096 | 32,768 | MIT | 61.5 | Long-context support; multilingual |
-| `Cohere Embed v3` | 1,024 | 512 | Proprietary | 63.9 | Built-in search_type parameter (separate embeddings for retrieval vs. search) |
-| `nomic-embed-text` | 768 | 8,192 | CC-BY-SA | 62.4 | Open-source; competitive with OpenAI; uses Matryoshka |
+| `Cohere Embed v4` | 256 / 512 / 1,024 / 1,536 (Matryoshka) | 128,000 | Proprietary | 65.2 | Multimodal — unified embeddings for text, images, and interleaved text+image in one vector; supersedes v3 (retained `input_type` parameter for query vs. document embeddings) |
+| `nomic-embed-text` | 768 | 8,192 | Apache 2.0 | 62.4 | Open-source; competitive with OpenAI; uses Matryoshka |
+| `voyage-3-large` | 256 / 512 / 1,024 / 2,048 (Matryoshka) | 32,000 | Proprietary | 65.1 | Highest-accuracy general-purpose retrieval; native `output_dtype` for int8/uint8/binary/ubinary at embed time |
+| `gemini-embedding-001` | 3,072, truncatable to 1,536 / 768 / 256 (Matryoshka) | 2,048 per input | Proprietary | 68.3 (MTEB multilingual) | Google's unified successor to `text-embedding-004`; top-ranked on the MTEB multilingual leaderboard |
+| `jina-embeddings-v3` | 1,024, down to 32 (Matryoshka) | 8,192 | CC BY-NC 4.0 (commercial license available) | 65.5 | Multilingual (89 languages) with task-specific LoRA adapters (retrieval, classification, clustering, etc.) |
+| `Qwen3-Embedding-8B` | Up to 4,096, flexible 32–4,096 | 32,768 | Apache 2.0 | 70.6 (MTEB multilingual, #1 as of Jun 2025) | Best-in-class open-source multilingual embedding; also ships as 0.6B / 4B variants for lighter deployments |
 
 ### MTEB Benchmark Explained
 
-MTEB (Massive Text Embedding Benchmark) evaluates embeddings on 56 datasets across 8 task types (retrieval, clustering, classification, etc.). A score of 60+ is production-grade.
+MTEB (Massive Text Embedding Benchmark) originally evaluated embeddings on 56 mostly-English datasets across 8 task types (retrieval, clustering, classification, etc.). It has since been superseded by **MMTEB** (Massive Multilingual Text Embedding Benchmark, a 2025 community-driven expansion): 500+ quality-controlled tasks spanning 250+ languages, plus harder task types like instruction-following, long-document retrieval, and code retrieval. A score of 60+ is still a reasonable production-grade bar on the English subset, but scores aren't directly comparable across MTEB versions — always check which benchmark revision a leaderboard number came from.
 
 **What MTEB tests well:** General-purpose retrieval on diverse text
 **What MTEB misses:** Domain-specific performance (medical, legal, code)
@@ -96,13 +100,13 @@ from openai import OpenAI
 
 client = OpenAI()
 
-# Full 512-dim embedding via the dimensions parameter
+# Full 1536-dim embedding (native size) via the dimensions parameter
 response = client.embeddings.create(
     model="text-embedding-3-small",
     input="What is RAG?",
-    dimensions=512
+    dimensions=1536
 )
-full_embedding = response.data[0].embedding  # length: 512
+full_embedding = response.data[0].embedding  # length: 1536
 
 # Truncate to 256 dims — OpenAI handles this server-side
 response_truncated = client.embeddings.create(
@@ -116,6 +120,18 @@ truncated = response_truncated.data[0].embedding  # length: 256
 ```
 
 **When to use:** If your latency or storage budget is tight. Trade-off: ~1% recall loss per 50% dimension reduction.
+
+### Binary / Int8 Quantization: Reducing Per-Dimension Precision
+
+Matryoshka truncation shrinks the *number* of dimensions; quantization shrinks the *precision* of each dimension — the two techniques compose (e.g., truncate to 512 dims, then quantize to int8).
+
+| Technique | Storage per vector | Compression vs. float32 | Typical recall impact |
+|-----------|--------------------|--------------------------|------------------------|
+| float32 (baseline) | 4 bytes/dim | 1x | — |
+| int8 (scalar quantization) | 1 byte/dim | ~4x | Small (~1-2%), especially with a float32 rescoring pass over top candidates |
+| binary (1 bit/dim, sign only) | 1 bit/dim | ~32x | Larger (often 5-10%+), usually mitigated by over-fetching a bigger candidate set and reranking with the original float32 vectors |
+
+**When to use:** Binary quantization + rescoring is the standard pattern for very large indexes (100M+ vectors) where storage and Hamming-distance search speed dominate cost. Int8 is a lower-risk default when you want most of the storage win with minimal accuracy loss. Voyage AI, Cohere, and OpenAI now expose native `output_dtype` options (`int8`, `uint8`, `binary`, `ubinary`) at embedding time, so quantization no longer requires a separate post-processing step.
 
 ---
 
@@ -310,9 +326,9 @@ def mine_from_feedback(feedback_logs):
     pairs = []
     for query, doc, rating in feedback_logs:
         if rating >= 4:  # Thumbs up
-            pairs.append((query, doc, positive=True))
+            pairs.append((query, doc, True))
         elif rating <= 2:  # Thumbs down
-            pairs.append((query, doc, positive=False))
+            pairs.append((query, doc, False))
     return pairs
 ```
 
@@ -407,15 +423,15 @@ How embedding model choice affects different RAG architectures.
 
 ---
 
-## Additional Interview Questions
+## Interview Q&A
 
-**Q: How do you handle queries in low-resource languages where your embedding model has poor coverage?**
+**Q: How do you handle queries in low-resource languages where your embedding model has poor coverage?** `[Intermediate]`
 
 Several options depending on budget: (1) **Multilingual embedding model** — swap to `multilingual-e5-large`, `LaBSE`, or `multilingual-bge` which are trained on 100+ languages and maintain cross-lingual alignment (an English query can match a French document). Quality is lower than monolingual models for high-resource languages but acceptable for many use cases. (2) **Translate-then-embed** — translate the query to English using a translation API before embedding; only works if your corpus is in English. Simple and high quality but adds latency and API cost. (3) **Fine-tune a multilingual model** on domain-specific cross-lingual pairs if off-the-shelf multilingual quality is insufficient. Test on a held-out set in each target language to confirm adequate coverage before deploying.
 
 ---
 
-**Q: What is the query-document asymmetry problem, and how do models like HyDE, INSTRUCTOR, and E5 address it?**
+**Q: What is the query-document asymmetry problem, and how do models like HyDE, INSTRUCTOR, and E5 address it?** `[Advanced]`
 
 **The problem:** Queries are short (3–15 words) and often keywords ("Python async error"), while documents are long and descriptive ("Python provides several mechanisms for asynchronous programming..."). Embedding both in the same space causes a distributional mismatch — the query vector rarely lands close to the document vector even when semantically relevant.
 
@@ -424,3 +440,12 @@ Several options depending on budget: (1) **Multilingual embedding model** — sw
 - **INSTRUCTOR**: trained with task-specific instructions prepended to inputs ("Represent this query for searching technical documents: ..."). The instruction shifts the embedding to match the target distribution.
 - **E5** (EmbEddings from bidirEctional Encoder rEpresentations): uses the prefix "query: " or "passage: " before text at both training and inference time, teaching the model that queries and passages should be handled differently even in the same embedding space.
 - **Asymmetric fine-tuning**: fine-tune with query–passage pairs using different prompts/prefixes for each side.
+
+---
+
+## Related
+
+- [Multimodal Embeddings](./multimodal_embeddings.md) — embedding cross-modal (image/audio) content into the same vector space
+- [Fine-Tuning for RAG](./fine_tuning.md) — fine-tuning embedding models on domain-specific pairs
+- [Reranking](./reranking.md) — cross-encoder reranking to catch bi-encoder mistakes like antonym collapse
+- [Chunking Strategies](./chunking_strategies.md) — mitigating long-document truncation and context loss before embedding

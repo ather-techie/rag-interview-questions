@@ -92,12 +92,14 @@ Loss = MarginRankingLoss(score(P) > score(N_i) + margin for all i)
 
 | Model | Latency (per pair) | NDCG@10 on MSMARCO | License | Size | When to Use |
 |-------|-------------------|-------------------|---------|------|-----------|
-| `ms-marco-MiniLM-L-6-v2` | 2ms | 33.6 | Apache 2.0 | 22 MB | Default choice; fast |
-| `ms-marco-MiniLM-L-12-v2` | 5ms | 34.6 | Apache 2.0 | 34 MB | Slightly better; still fast |
-| `ms-marco-ELECTRA-base` | 10ms | 35.7 | Apache 2.0 | 110 MB | Higher quality; slower |
-| `Cohere Rerank 3` | 50ms | 39.2 (proprietary) | Proprietary | API | Highest quality; cloud-dependent |
+| `cross-encoder/ms-marco-MiniLM-L-6-v2` | 2ms | 33.6 | Apache 2.0 | 22 MB | Default choice; fast |
+| `cross-encoder/ms-marco-MiniLM-L-12-v2` | 5ms | 34.6 | Apache 2.0 | 34 MB | Slightly better; still fast |
+| `cross-encoder/ms-marco-ELECTRA-base` | 10ms | 35.7 | Apache 2.0 | 110 MB | Higher quality; slower |
+| `Cohere Rerank 4` | 50ms | Proprietary eval suite (not public MSMARCO) | Proprietary | API | Highest quality; cloud-dependent; ships alongside a lighter "Fast" variant |
 | `BGE-reranker-large` | 15ms | 37.3 | MIT | 500 MB | High quality; open-source |
 | `Jina Reranker v2` | 20ms | 38.1 | Apache 2.0 | 400 MB | Multilingual; high quality |
+
+> **Cohere Rerank version history:** Rerank 3.5 (Dec 2024) added stronger reasoning over complex/constrained queries and much better multilingual and cross-lingual search (+26% vs. Rerank 3 on cross-lingual benchmarks, SOTA across 10+ business languages). Rerank 4 (Dec 2025), offered in "Pro" and "Fast" variants, is the current flagship as of mid-2026 and further improves accuracy and speed for enterprise retrieval. Check Cohere's docs for the latest model ID before integrating, since this lineup updates roughly annually.
 
 ---
 
@@ -168,7 +170,7 @@ def rankgpt(query, candidates, window_size=20, step=10):
 
 **Why it works:** GPT-4 sees multiple candidates and can make nuanced judgements.
 
-**Cost:** ~$1 per 100 queries (GPT-4 is expensive).
+**Cost:** LLM-based reranking is meaningfully more expensive per query than a cross-encoder — often 1–2 orders of magnitude higher, since it re-processes the full text of every candidate as input tokens on each call (and sliding-window approaches multiply that by the number of windows), instead of a single cheap forward pass through a small purpose-built model. LLM API pricing changes frequently and varies a lot by model tier, so check current provider pricing (OpenAI, Anthropic, Google, etc.) before budgeting rather than relying on a fixed per-query figure.
 
 ---
 
@@ -192,8 +194,8 @@ def retrieve_and_rerank(query: str, k: int = 50, j: int = 5):
 **Latency breakdown (typical):**
 - Dense embedding: 5ms
 - Vector DB search: 20ms
-- Cross-encoder (k=50 → j=5): 100ms (10 pairs × 10ms each if batched)
-- **Total: ~125ms**
+- Cross-encoder (k=50 → j=5): 200ms (50 pairs × ~4ms each if batched)
+- **Total: ~225ms**
 
 **Code: Full Pipeline**
 
@@ -202,7 +204,7 @@ from sentence_transformers import SentenceTransformer, CrossEncoder
 from qdrant_client import QdrantClient
 
 dense_model = SentenceTransformer('all-MiniLM-L6-v2')
-cross_encoder = CrossEncoder('ms-marco-MiniLM-L-6-v2')
+cross_encoder = CrossEncoder('cross-encoder/ms-marco-MiniLM-L-6-v2')
 client = QdrantClient(':memory:')
 
 def rag_retrieve(query: str) -> list:
@@ -260,22 +262,7 @@ Rerank with doc first: "Doc: ... [SEP] Q: ..." → Score: 0.92
 Rerank with query first: "Q: ... [SEP] Doc: ..." → Score: 0.87
 ```
 
-**Fix:** Always use the same order. Shuffle input order at test time.
-
-```python
-def rerank_debiased(query, documents, cross_encoder):
-    """Rerank with random order to mitigate position bias."""
-    scores = []
-    for doc in documents:
-        # Shuffle input order
-        if random.random() > 0.5:
-            score = cross_encoder.predict([[query, doc]])[0][0]
-        else:
-            score = cross_encoder.predict([[doc, query]])[0][0]
-        scores.append((doc, score))
-    
-    return sorted(scores, key=lambda x: x[1], reverse=True)
-```
+**Fix:** For most cross-encoders, query and document are *not* interchangeable — the model is trained with a fixed `[query, document]` order, so swapping the arguments doesn't cancel out bias; it feeds the model an input it never saw during training and degrades quality. The correct mitigation is to always call the model with the order specified in its model card (never mix orders per-call). Order-sensitivity is then a property of that specific model, not something to patch at inference time. A small number of models are explicitly trained to be order-symmetric — only average scores across both orderings if the model card confirms that support.
 
 ---
 
@@ -318,6 +305,56 @@ def rerank_length_normalized(query, documents, cross_encoder):
 
 ---
 
+## Score Calibration and Thresholding
+
+Reranker scores are a ranking signal, not a probability — treating them as one is a common production mistake.
+
+**Problem:** Raw cross-encoder outputs (whether logits or a sigmoid-squashed score) are trained purely with a ranking loss (see Training Signal above) — the objective only pushes `score(positive) > score(negative) + margin` for candidates *within the same query*. Nothing in that objective calibrates the absolute value of the score against a global notion of "relevant" vs. "not relevant," and nothing ties one query's score scale to another's. A score of 0.83 for one query and 0.83 for a different query aren't the same thing — they can reflect very different amounts of true relevance, because the model only ever learned to compare candidates against each other inside a single query's context. The reliable information is the *relative order* the scores impose on one query's candidate set, not the raw magnitude.
+
+**Why it matters in production:** It's tempting to add a rule like "if `reranker_score < 0.5`, respond with 'insufficient evidence' instead of answering" as a cheap abstention guardrail. That works fine for top-k selection (ranking within a set), but misfires as an absolute cutoff: score distributions shift across query types and domains. A well-answered factual query in a narrow domain might top out around 0.6, while an ambiguous or multi-hop query in a broad domain might have its best candidate sitting at 0.9. A single global threshold tuned on one slice of traffic ends up over-triggering abstention on some query types and under-triggering it on others — inconsistent behavior that's hard to debug because "the score" looks like a probability but isn't one.
+
+**Fix:** Calibrate the score against labeled data, or normalize within each query's candidate set — don't threshold the raw score directly.
+
+```python
+from sklearn.linear_model import LogisticRegression
+from sklearn.isotonic import IsotonicRegression
+import numpy as np
+
+# --- Option 1: fit a calibration function on a labeled validation set ---
+# raw_scores: cross-encoder outputs; labels: 1 if human-judged relevant, else 0
+
+# Platt scaling: 1D logistic regression mapping raw score -> probability
+platt = LogisticRegression()
+platt.fit(raw_scores.reshape(-1, 1), labels)
+calibrated_prob = platt.predict_proba(new_score.reshape(-1, 1))[:, 1]
+
+# Isotonic regression: monotonic (non-parametric) mapping; needs more data
+iso = IsotonicRegression(out_of_bounds='clip')
+iso.fit(raw_scores, labels)
+calibrated_prob = iso.predict(new_score)
+
+# Threshold on the CALIBRATED probability, never on the raw score
+if calibrated_prob < 0.5:
+    return "insufficient evidence"
+
+# --- Option 2: no labeled data? normalize within the query's candidate set ---
+def normalize_scores(scores: list) -> list:
+    """Min-max normalize reranker scores within one query's candidate set."""
+    lo, hi = min(scores), max(scores)
+    if hi - lo < 1e-9:
+        return [0.5] * len(scores)  # degenerate case: all candidates scored ~equally
+    return [(s - lo) / (hi - lo) for s in scores]
+
+def softmax_normalize(scores: list) -> list:
+    """Softmax over one query's candidate set — separation, not absolute score."""
+    exp_scores = np.exp(np.array(scores) - max(scores))
+    return list(exp_scores / exp_scores.sum())
+```
+
+Both approaches turn the reranker's raw ranking signal into something that behaves consistently as an abstention threshold across query types and domains, instead of a number that only means something relative to its own query's candidate set.
+
+---
+
 ## When to Skip Reranking
 
 **Criteria:**
@@ -350,7 +387,15 @@ def should_rerank(query: str, dense_results: list, cross_encoder) -> bool:
 ## Key Takeaways
 
 1. **Reranking is almost always worth the latency cost.** 5–10% precision improvement for 50–150ms is a good trade.
-2. **Start with `ms-marco-MiniLM-L-6-v2`.** Fast, accurate, open-source.
+2. **Start with `cross-encoder/ms-marco-MiniLM-L-6-v2`.** Fast, accurate, open-source.
 3. **k=20→5 is the sweet spot.** Rerank top-20 to top-5. Balances cost and quality.
 4. **Beware of position and length bias.** Shuffle input order; normalize by length.
 5. **Domain-specific cross-encoders are worth fine-tuning.** If NDCG<0.65 on your domain, fine-tune or use a domain-specific model.
+
+---
+
+## Related
+
+- [Fine-Tuning](./fine_tuning.md) — how to fine-tune a cross-encoder reranker for your domain instead of using an off-the-shelf model.
+- [Retrieval Strategies](./retrieval_strategies.md) — reranking is a second-stage step downstream of the first-stage retriever covered here.
+- [Evaluation Metrics](./evaluation_metrics.md) — how to measure reranker quality (NDCG, precision) before and after reranking.

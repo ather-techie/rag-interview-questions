@@ -281,41 +281,19 @@ metric value
 ### Example: Freshness Alert
 
 ```python
+from datetime import datetime, timezone
+
 def check_index_freshness(source: str, sla_hours: int = 24):
     """Alert if a source hasn't been re-indexed within SLA.
     Catches the silent-pipeline-death cause of the stale index problem."""
     last_indexed = index_metadata.get_last_indexed_at(source)
-    lag_hours = (datetime.utcnow() - last_indexed).total_seconds() / 3600
+    lag_hours = (datetime.now(timezone.utc) - last_indexed).total_seconds() / 3600
 
     statsd.gauge(f"rag.index.freshness_lag_hours.{source}", lag_hours)
     if lag_hours > sla_hours:
         page(f"Index for '{source}' is {lag_hours:.0f}h stale "
              f"(SLA {sla_hours}h). Check ingestion queue.")
 ```
-
----
-
-## Interview Gotchas
-
-### "How would you know your RAG quality regressed after a deploy?"
-
-The canonical answer has four layers — name all four, in order:
-
-1. **Pre-deploy gate:** CI runs the golden-dataset eval (RAGAS + retrieval metrics); the deploy is blocked if any metric drops beyond threshold. Catches regressions from prompt/retrieval/chunking changes.
-2. **Canary + guardrails:** roll out to 5–10% of traffic; compare guardrail metrics (latency, error rate, refusal rate) and judge scores canary-vs-control before full rollout.
-3. **Online signals:** post-rollout, watch regeneration rate, rephrase rate, thumbs ratio, and escalation rate against the pre-deploy baseline window.
-4. **Trace-level triage:** when a signal fires, pull the failing traces, localize the stage (retrieval vs. rerank vs. generation) using per-stage scores, and promote the failures into the golden set so the same regression is caught pre-deploy next time.
-
-### Other Common Probes
-
-| Question | The Trap | Strong Answer Hinges On |
-|---|---|---|
-| "Can you just use GPT-4 to grade your answers?" | Saying yes unconditionally | Calibrate against human labels first; different family than generator; pin the judge version |
-| "Your thumbs-up rate is 92%. Is your RAG good?" | Accepting the number | <5% of users vote; selection bias; need composite implicit signals |
-| "Offline evals improved but users are complaining" | Blaming users | Distribution shift between golden set and live traffic; Goodharting; check unanswerable-question rate |
-| "How do you evaluate without ground-truth labels?" | "We can't" | Reference-free LLM-as-judge (faithfulness needs only context + answer) plus behavioral signals |
-| "What do you log per request?" | "The question and answer" | The full trace: rewritten query, chunk IDs + scores per stage, final prompt, judge scores — else you can't localize failures |
-| "Your judge scores dropped 5% overnight, no deploy" | Assuming the system broke | Could be the *judge* (provider model update) or query drift — check a fixed sentinel set scored daily to isolate judge drift from system drift |
 
 ---
 
@@ -326,3 +304,52 @@ The canonical answer has four layers — name all four, in order:
 3. **No single online signal is trustworthy.** Composite implicit signals (regeneration + rephrase + escalation) beat thumbs ratios.
 4. **Log the full trace, not just Q&A.** Chunk IDs and scores at every stage are what let you localize a failure to retrieval, reranking, or generation.
 5. **Alert on drift, not just floors.** Moving-average deltas with persistence requirements catch slow decay (stale index, query drift) that absolute thresholds miss.
+
+---
+
+## Interview Q&A
+
+**Q: How would you know your RAG quality regressed after a deploy?** `[Advanced]`
+
+The canonical answer has four layers — name all four, in order:
+
+1. **Pre-deploy gate:** CI runs the golden-dataset eval (RAGAS + retrieval metrics); the deploy is blocked if any metric drops beyond threshold. Catches regressions from prompt/retrieval/chunking changes.
+2. **Canary + guardrails:** roll out to 5–10% of traffic; compare guardrail metrics (latency, error rate, refusal rate) and judge scores canary-vs-control before full rollout.
+3. **Online signals:** post-rollout, watch regeneration rate, rephrase rate, thumbs ratio, and escalation rate against the pre-deploy baseline window.
+4. **Trace-level triage:** when a signal fires, pull the failing traces, localize the stage (retrieval vs. rerank vs. generation) using per-stage scores, and promote the failures into the golden set so the same regression is caught pre-deploy next time.
+
+---
+
+**Q: Can you just use an LLM judge to grade your answers?** `[Intermediate]`
+
+Not unconditionally. Calibrate the judge against human labels first (Cohen's kappa or Spearman correlation on 50–200 human-labeled traces), use a judge from a different model family than the generator to avoid self-preference bias, and pin the judge model version — a silent provider-side judge upgrade shifts all scores without any change on your end.
+
+---
+
+**Q: Your thumbs-up rate is 92%. Is your RAG good?** `[Intermediate]`
+
+Not necessarily — don't accept the number at face value. Explicit feedback like thumbs typically comes from under 5% of users and is heavily biased toward angry or highly engaged users, so a 92% rate says little about the silent majority. You need composite implicit signals (e.g., no regeneration AND no rephrase AND no escalation within session) to get a reliable read on quality.
+
+---
+
+**Q: Offline evals improved but users are complaining — what's going on?** `[Advanced]`
+
+Don't blame the users. This is the classic online/offline divergence: the golden dataset is cleaner and narrower than live traffic (distribution shift), prompt tweaks may have overfit to the fixed golden set (Goodharting), or online traffic includes unanswerable questions that never appear offline. Check the unanswerable-question rate and compare the query distributions before concluding the model regressed.
+
+---
+
+**Q: How do you evaluate a RAG system without ground-truth labels?** `[Intermediate]`
+
+"We can't" is the wrong answer. Reference-free LLM-as-judge techniques work because faithfulness only needs the context and answer (not a gold answer) to check whether claims are supported. Combine this with behavioral signals from live traffic (regeneration rate, escalation rate, dwell time) to triangulate quality without labeled data.
+
+---
+
+**Q: What do you log per request in a production RAG system?** `[Basic]`
+
+More than "the question and answer." Log the full trace: the raw and rewritten query, retrieved chunk IDs and scores, reranked chunk IDs and scores, the final assembled prompt, model parameters and token usage, and any sampled judge scores. Without per-stage chunk IDs and scores you cannot localize a failure to retrieval, reranking, or generation.
+
+---
+
+**Q: Your judge scores dropped 5% overnight with no deploy — what do you check?** `[Advanced]`
+
+Don't assume the system broke. The drop could come from the *judge* itself — the provider silently updated the underlying model — rather than from query or corpus drift. Score a fixed sentinel set daily (same inputs, same expected scores) so a shift in the sentinel scores isolates judge drift from genuine system drift.

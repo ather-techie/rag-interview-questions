@@ -10,15 +10,54 @@
 | [02_hybrid_rag.ipynb](02_hybrid_rag.ipynb) | BM25 + dense retrieval merged with RRF | `rank_bm25`, FAISS, RRF formula, comparison vs. each alone |
 | [03_reranker_pipeline.ipynb](03_reranker_pipeline.ipynb) | Two-stage: bi-encoder → cross-encoder reranker | `CrossEncoder`, latency trade-off, rank change analysis |
 | [04_ragas_evaluation.ipynb](04_ragas_evaluation.ipynb) | Full eval harness: RAGAS + custom judges + regression detection | Golden datasets, RAGAS 4 metrics, LLM-as-judge, Recall@k |
-| [05_agentic_rag.ipynb](05_agentic_rag.ipynb) | ReAct & Plan-and-Execute agentic retrieval loops with tool use, stopping criteria, and prompt-injection guardrails | Anthropic tool-use loops, multi-hop query decomposition, agent evaluation, injection defense |
+| [05_agentic_rag.ipynb](05_agentic_rag.ipynb) | ReAct & Plan-and-Execute agentic retrieval loops with tool use, stopping criteria, and prompt-injection guardrails | Provider-agnostic function-calling loops, multi-hop query decomposition, agent evaluation, injection defense |
 
 ## Prerequisites
 
-```bash
-pip install rank-bm25 sentence-transformers faiss-cpu anthropic ragas langchain-anthropic datasets
+### 1. Create a virtual environment
+
+**Windows (PowerShell):**
+
+```powershell
+py -3 -m venv .venv
+.\.venv\Scripts\Activate.ps1
 ```
 
-Set `ANTHROPIC_API_KEY` in your environment before running any notebook.
+**macOS/Linux:**
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+```
+
+### 2. Install dependencies
+
+```bash
+pip install --upgrade pip
+pip install -r requirements.txt
+```
+
+### 3. Register the environment as a Jupyter kernel
+
+```bash
+python -m ipykernel install --user --name rag-labs --display-name "Python (rag-labs)"
+```
+
+Select the **Python (rag-labs)** kernel when opening a notebook (in VS Code: top-right kernel picker; in Jupyter: Kernel → Change Kernel).
+
+### 4. Configure your LLM provider
+
+Copy `.env.example` to `.env` and set `AI_PROVIDER`, `AI_MODEL`, and `AI_API_KEY` (Labs 02-05 read these via `ai_client.py`, which supports `claude`, `gemini`, `openai`, `azure`, and `ollama`). Lab 01 additionally needs `HF_TOKEN` (a HuggingFace Hub token), independent of `AI_PROVIDER`.
+
+```powershell
+Copy-Item .env.example .env
+```
+
+```bash
+cp .env.example .env
+```
+
+Then edit `.env` with your provider and key.
 
 ## Lab Progression
 
@@ -48,9 +87,9 @@ Lab 05 (Agentic RAG)
 | Lab | API Calls | Est. Cost |
 |-----|-----------|-----------|
 | 01 | ~10 Claude calls | ~$0.002 |
-| 02 | ~5 Claude calls | ~$0.001 |
-| 03 | ~5 Claude calls | ~$0.001 |
+| 02 | ~5 LLM calls | ~$0.001 |
+| 03 | ~5 LLM calls | ~$0.001 |
 | 04 | ~50–80 RAGAS judge calls | ~$0.05 |
-| 05 | ~25–40 Claude calls (multi-step loops + eval) | ~$0.01–0.02 |
+| 05 | ~25–40 LLM calls (multi-step loops + eval) | ~$0.01–0.02 |
 
-All labs use `claude-haiku-4-5-20251001` except RAGAS evaluation (uses `claude-sonnet-5` as judge).
+Labs 02-05 use whichever model `AI_MODEL` is set to (see `.env`); costs above assume a small/cheap model like `gemini-2.5-flash-lite`. Lab 01 uses HuggingFace's Mistral-7B (or local Ollama), independent of `AI_PROVIDER`.

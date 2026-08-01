@@ -40,12 +40,15 @@ A broken step anywhere in this chain silently degrades every downstream retrieva
 |--------|------------------|--------------|
 | PDF | PDF parsers / OCR | `pypdf`, `pdfplumber`, `pymupdf` |
 | Scanned PDF / Image | OCR engine | `pytesseract`, `easyocr`, `paddleocr` |
+| Word doc (.docx) | XML-based document parsing | `python-docx`, `docx2txt` |
 | Website / HTML | Web scraping | `beautifulsoup4`, `scrapy`, `playwright` |
 | Database | SQL queries | `SQLAlchemy`, direct DB drivers |
 | REST API | HTTP requests | `requests`, `httpx` |
 | Notion | Official SDK | `notion-client` |
 | CSV / Excel | DataFrame parsing | `pandas` |
 | Markdown / Code | Direct read | `pathlib` + text parsing |
+
+**Note on Word docs:** `docx2txt` is the simplest option — it returns body, table, and header/footer text in one call, but discards structure. `python-docx` gives structured access (iterate `document.paragraphs`, `document.tables`, and each section's `header`/`footer`), which is needed if you want to preserve table structure or separate body text from boilerplate headers/footers. Neither library renders tracked changes; a `.docx` with unaccepted revisions will silently include both the original and edited text unless you first flatten revisions (e.g., via `docx.settings` or a conversion step in Word/LibreOffice).
 
 ---
 
@@ -123,6 +126,50 @@ Clean Text
 
 ---
 
+## VLM-Based Parsing and the Modern Document-AI Stack
+
+Traditional OCR + layout-detection pipelines (above) treat text extraction and layout understanding as separate, hand-tuned steps. An increasingly common alternative in production RAG ingestion: feed a rendered page image directly to a vision-language model (VLM) and let it read the page the way a person would.
+
+**VLM-based parsing**
+
+Instead of bounding-box detection → OCR per region → table reconstruction, a VLM (e.g., GPT-4o, Claude, Gemini, or open-weight models like Qwen2-VL / Qwen2.5-VL) takes a page image plus a prompt and returns structured output — usually Markdown that preserves headings, tables, and reading order — in a single pass.
+
+```
+Traditional OCR pipeline:
+  Page Image → Layout Detection → OCR per region → Table Reconstruction → Text
+  (several specialized models chained together, each a separate failure point)
+
+VLM pipeline:
+  Page Image → VLM (single pass) → Structured Markdown / JSON
+  (one model call; layout and tables handled via natural-language reasoning, not bounding boxes)
+```
+
+- **Strengths:** noticeably more robust than classical OCR on complex multi-column layouts, merged/nested tables, handwriting, and low-quality scans, because the model reasons about structure semantically rather than geometrically. Can also describe charts/figures in text, which OCR cannot.
+- **Trade-offs:** higher per-page cost and latency than `pytesseract`/`easyocr`; outputs can hallucinate values not actually on the page, so numeric-heavy extractions (financial tables) need spot-checking; less deterministic than rule-based OCR; born-digital PDFs must still be rasterized to an image first, an unnecessary step if a text layer already exists.
+- **When to reach for it:** scanned documents with dense tables, handwriting, checkboxes/forms, or irregular layouts where classical OCR keeps failing. For clean, born-digital PDFs, a text-layer extractor (`pypdf`/`pymupdf`) remains cheaper and more reliable.
+
+**Modern document-AI stack**
+
+Beyond calling a VLM directly, several tools now package layout detection, OCR, table extraction, and (increasingly) VLM options behind one API, reducing the custom `pypdf`/`pdfplumber` glue code a team has to maintain:
+
+| Tool | Type | Best For | vs. DIY pypdf/pdfplumber pipeline |
+|------|------|----------|-----------------------------------|
+| `unstructured` (unstructured.io) | Open-source Python library | Partitioning many formats (PDF, DOCX, PPTX, HTML, images, email) into typed elements (`Title`, `NarrativeText`, `Table`) via `fast`/`hi_res`/`ocr_only` strategies | One consistent API across many formats instead of a different library per format; heavier dependency footprint and slower on the `hi_res` path |
+| `LlamaParse` (LlamaIndex) | Hosted parsing API | Complex PDFs with embedded tables and charts; clean Markdown/JSON output; offers an agentic multimodal parsing mode for hard documents | Handles layout and table reconstruction as a service, at usage-based cost, instead of hand-tuned local extraction code |
+| `Docling` (IBM) | Open-source toolkit | Local/offline conversion of PDF, DOCX, PPTX, XLSX, HTML, and images to Markdown/JSON, using purpose-built layout (DocLayNet) and table-structure (TableFormer) models | Preserves reading order and table structure better than a plain text-layer extraction, runs entirely on a laptop with no API key, but adds a heavier ML dependency stack than `pypdf` |
+| Azure AI Document Intelligence | Managed cloud API | Enterprise OCR + layout extraction (text, tables, key-value pairs, selection marks), with prebuilt models for invoices, receipts, IDs | Fully managed and scalable (batch analysis, SLA) at the cost of per-page pricing and a cloud dependency; less customizable than an OSS pipeline |
+
+**Decision guide:**
+```
+Clean, born-digital PDF, no tables        → pypdf / pymupdf (cheapest, fastest)
+Table-heavy digital PDF                   → pdfplumber, or unstructured/Docling if many formats are involved
+Scanned, handwritten, or irregular layout → VLM-based parsing or LlamaParse
+Need one library across many file types   → unstructured or Docling
+Enterprise/regulated, need a managed SLA  → Azure Document Intelligence
+```
+
+---
+
 ## Incremental Ingestion: Handling Updates Without Full Re-Embedding
 
 Re-embedding your entire corpus on every document update is expensive. The standard approach:
@@ -142,6 +189,16 @@ Incoming Document
 ```
 
 This pattern is covered in detail in [04-stale_index_problem.md](../03_failure_modes/04-stale_index_problem.md).
+
+---
+
+## Key Takeaways
+
+1. **Ingestion failures are silent.** A corrupted chunk produces a valid embedding and gets indexed — you only discover the failure when retrieval returns wrong answers.
+2. **Preserve metadata at extraction time.** `source`, `page`, and `section` fields enable pre-filtering that can double retrieval precision.
+3. **Route scanned PDFs to OCR explicitly.** Don't let an empty text extraction pass silently into the pipeline.
+4. **Use content hashing for incremental ingestion.** Re-embedding unchanged documents wastes compute and introduces no benefit.
+5. **Deduplicate before embedding, not after.** Near-duplicate chunks waste index space and bias retrieval toward over-represented content.
 
 ---
 
@@ -777,13 +834,3 @@ def ingest_document(doc_id: str, path: str) -> None:
 **Key principle:** A partial failure should never silently corrupt the index. Either the document is ingested correctly, or it goes to the dead-letter queue with a logged reason.
 
 </details>
-
----
-
-## Key Takeaways
-
-1. **Ingestion failures are silent.** A corrupted chunk produces a valid embedding and gets indexed — you only discover the failure when retrieval returns wrong answers.
-2. **Preserve metadata at extraction time.** `source`, `page`, and `section` fields enable pre-filtering that can double retrieval precision.
-3. **Route scanned PDFs to OCR explicitly.** Don't let an empty text extraction pass silently into the pipeline.
-4. **Use content hashing for incremental ingestion.** Re-embedding unchanged documents wastes compute and introduces no benefit.
-5. **Deduplicate before embedding, not after.** Near-duplicate chunks waste index space and bias retrieval toward over-represented content.

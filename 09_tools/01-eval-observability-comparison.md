@@ -20,7 +20,7 @@
 
 ## Ragas
 
-Already covered in depth elsewhere in this repo — see [08_evaluation/02-ragas-ci-harness.md](../08_evaluation/02-ragas-ci-harness.md) for full setup code, the four core metrics, custom judge metrics, and a GitHub Actions CI harness, and [06_labs/04_ragas_evaluation.ipynb](../06_labs/04_ragas_evaluation.ipynb) for a runnable notebook version. Reach for Ragas when you want an LLM-judged, no-gold-label baseline wired into CI as a regression gate.
+Already covered in depth elsewhere in this repo — see [08_evaluation/02-ragas-ci-harness.md](../08_evaluation/02-ragas-ci-harness.md) for full setup code, the four core metrics, custom judge metrics, and a GitHub Actions CI harness, and [06_labs_py/04_ragas_evaluation.ipynb](../06_labs_py/04_ragas_evaluation.ipynb) for a runnable notebook version. Reach for Ragas when you want an LLM-judged, no-gold-label baseline wired into CI as a regression gate.
 
 ---
 

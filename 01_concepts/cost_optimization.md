@@ -4,6 +4,12 @@
 
 ---
 
+## What is Cost Optimization (in RAG)?
+
+Cost optimization in RAG is the practice of reducing the compute and API spend accrued at each stage of a request — embedding, vector search, reranking, and generation — without degrading answer quality. It spans techniques like model tiering, prompt caching, quantization, and batching, and it matters because RAG systems make multiple paid calls per query, so per-request savings compound quickly at production traffic volumes.
+
+---
+
 ## The RAG Cost Stack
 
 A RAG request accrues cost at every stage. Understanding where money goes is the prerequisite to cutting it.
@@ -61,12 +67,16 @@ response = client.messages.create(
 
 ### Cache Economics
 
+The dollar amounts change with every price update — what stays true is the *ratio*: cache reads cost a small fraction of a full-price input token, so the more of your prompt you can push before the cache breakpoint, the bigger the savings.
+
 | Scenario | Without Caching | With Caching | Savings |
 |----------|-----------------|--------------|---------|
-| 2500 token static prefix, 50 token query | 2550 tokens × $3/1M | 50 tokens × $3/1M + 2500 × $0.30/1M | ~94% input cost |
-| 50 docs × 800 tokens each static | 40K input tokens | 40K cached + 50 uncached | ~98% input cost |
+| 2500 token static prefix, 50 token query | 2550 tokens at full input price | 50 tokens at full price + 2500 tokens at the cache-read rate (~0.1× full price on Anthropic's API) | ~94% input cost |
+| 50 docs × 800 tokens each static | 40K input tokens at full price | 40K tokens at the cache-read rate + 50 uncached tokens at full price | ~98% input cost |
 
-**Cache TTL:** 5 minutes (Anthropic/OpenAI), reset on each hit. Keep prompt prefixes identical across requests — even whitespace differences bust the cache.
+Check your provider's current pricing page for the exact cache-read and cache-write multipliers before modeling savings at scale — they vary by provider and can change independently of base token prices.
+
+**Cache TTL:** Anthropic's default ephemeral cache entry lives 5 minutes, reset on each hit (`cache_control: {"type": "ephemeral"}`). Anthropic also offers an extended **1-hour TTL** (`cache_control: {"type": "ephemeral", "ttl": "1h"}`) for content that's reused less frequently but still worth caching — e.g. a reference-document prefix hit every 10–20 minutes rather than every few seconds. The 1-hour TTL costs more to *write* than the 5-minute default (roughly 2× base input price vs. ~1.25×), so it only pays off with enough reuse inside the hour to offset that premium; for bursty traffic with gaps longer than 5 minutes but shorter than an hour, it's usually a net win over repeatedly re-paying the 5-minute write cost. OpenAI's automatic prompt caching has no configurable TTL. Whichever TTL you pick, keep prompt prefixes byte-identical across requests — even whitespace differences bust the cache.
 
 ---
 
@@ -87,9 +97,9 @@ Complex reasoning       →  claude-opus-4-8     (only when needed)
 ```python
 def generate_answer(query: str, docs: list[str], complexity: str) -> str:
     MODEL_MAP = {
-        "simple":  "claude-haiku-4-5-20251001",  # factual lookup, short answer
-        "medium":  "claude-sonnet-5",              # explanation, multi-step
-        "complex": "claude-opus-4-8",              # multi-document synthesis, reasoning
+        "simple":  "claude-haiku-4-5",  # factual lookup, short answer
+        "medium":  "claude-sonnet-5",   # explanation, multi-step
+        "complex": "claude-opus-4-8",   # multi-document synthesis, reasoning
     }
     model = MODEL_MAP[complexity]
     
@@ -114,7 +124,7 @@ Reply with one word only."""
 
 def classify_complexity(query: str) -> str:
     resp = client.messages.create(
-        model="claude-haiku-4-5-20251001",   # use cheap model for classification itself
+        model="claude-haiku-4-5",   # use cheap model for classification itself
         max_tokens=5,
         messages=[{"role": "user", "content": CLASSIFY_PROMPT.format(query=query)}]
     )
@@ -153,7 +163,7 @@ Passage: {passage}"""
 
 def compress_chunk(question: str, chunk: str) -> str:
     resp = client.messages.create(
-        model="claude-haiku-4-5-20251001",   # small model for compression
+        model="claude-haiku-4-5",   # small model for compression
         max_tokens=200,
         messages=[{"role": "user", "content": COMPRESS_PROMPT.format(
             question=question, passage=chunk
@@ -185,12 +195,11 @@ OUTPUT_BUDGET = {
 
 ### Use Smaller Embedding Models
 
-```
-Model                     Dimensions  Cost (API)         MTEB Score
-text-embedding-3-large    3072        $0.13/1M tokens    64.6
-text-embedding-3-small    1536        $0.02/1M tokens    62.3   ← 85% cheaper, 97% quality
-all-MiniLM-L6-v2          384         $0 (self-hosted)   56.3   ← free, ~87% quality
-```
+| Model | Dimensions | Cost (API) | MTEB Score | Notes |
+|---|---|---|---|---|
+| text-embedding-3-large | 3072 | $0.13/1M tokens | 64.6 | Baseline |
+| text-embedding-3-small | 1536 | $0.02/1M tokens | 62.3 | 85% cheaper, 97% quality |
+| all-MiniLM-L6-v2 | 384 | $0 (self-hosted) | 56.3 | Free, ~87% quality |
 
 For most production RAG systems, `text-embedding-3-small` or a self-hosted model is sufficient.
 
@@ -308,10 +317,13 @@ Track cost at the query level to identify regressions and outliers.
 
 ```python
 def track_cost(response, model: str) -> dict:
+    # Per-1M-token prices below are illustrative — pull current rates from
+    # your provider's pricing page (or the Models API) rather than hardcoding
+    # them; they change over time and vary by intro/promotional pricing.
     PRICING = {
-        "claude-haiku-4-5-20251001": {"input": 0.80, "output": 4.00},   # per 1M tokens
-        "claude-sonnet-5":           {"input": 3.00, "output": 15.00},
-        "claude-opus-4-8":           {"input": 15.00, "output": 75.00},
+        "claude-haiku-4-5": {"input": 1.00, "output": 5.00},   # per 1M tokens
+        "claude-sonnet-5":  {"input": 3.00, "output": 15.00},
+        "claude-opus-4-8":  {"input": 5.00, "output": 25.00},
     }
     usage = response.usage
     prices = PRICING[model]
@@ -353,24 +365,32 @@ Apply these in order — each delivers diminishing returns once the previous is 
 
 ## Interview Q&A
 
-**Q: How would you reduce the cost of a RAG system that's spending $10K/month on LLM calls?**
+**Q: How would you reduce the cost of a RAG system that's spending $10K/month on LLM calls?** `[Advanced]`
 
 Start with the highest-ROI levers: (1) enable prompt caching on the static system prompt and any fixed reference documents — this alone cuts 70–95% of input token cost on cached prefixes. (2) Set tight `max_tokens` budgets per query type. (3) Add a query classifier (Haiku, ~$0.001/call) to route simple factual queries to a cheaper model. (4) Add a semantic query cache for high-frequency repeated questions. (5) Compress retrieved chunks with a small model before passing to the large model. These five steps typically reduce cost by 60–80% with minimal quality impact.
 
 ---
 
-**Q: What is model tiering in RAG and when is it safe to downgrade to a smaller model?**
+**Q: What is model tiering in RAG and when is it safe to downgrade to a smaller model?** `[Intermediate]`
 
 Model tiering assigns each pipeline stage to the cheapest model that meets the quality bar for that stage. It's safe to downgrade for: binary classification (is this relevant?), short query rewrites, simple factual questions with unambiguous answers, and extraction tasks with a fixed schema. Use larger models for: multi-document synthesis, complex reasoning chains, ambiguous queries, and generation tasks where nuance matters. Measure quality regression empirically — don't guess.
 
 ---
 
-**Q: How does Anthropic prompt caching differ from application-level semantic caching?**
+**Q: How does Anthropic prompt caching differ from application-level semantic caching?** `[Intermediate]`
 
 Prompt caching (Anthropic/OpenAI) is server-side: the provider caches KV attention tensors for your static prompt prefix. You still run inference; you just pay less for the cached input tokens. Semantic caching is application-side: you skip the LLM call entirely when a semantically similar query is found in your own cache. Prompt caching helps with every call (even unique queries) as long as the prefix is shared. Semantic caching helps only for repeated queries but saves 100% of the LLM cost on a cache hit.
 
 ---
 
-**Q: What is the risk of aggressively caching to reduce costs?**
+**Q: What is the risk of aggressively caching to reduce costs?** `[Intermediate]`
 
 Stale responses: if the underlying documents change, cached answers reflect old information. For time-sensitive or rapidly-updated knowledge bases, TTL must be tuned to the document update frequency — or event-driven cache invalidation used. Additionally, semantic caching in multi-tenant systems risks cross-tenant data leakage if cache keys don't include a tenant scope.
+
+---
+
+## Related
+
+- [Caching Strategies](./caching_strategies.md) — the other half of the cost story: prompt caching, semantic caching, and TTL tuning in depth
+- [Fine-Tuning](./fine_tuning.md) — trading upfront training cost for lower per-request inference cost and quality gains
+- [Reranking](./reranking.md) — the latency/cost tradeoffs of adding a cross-encoder reranking stage

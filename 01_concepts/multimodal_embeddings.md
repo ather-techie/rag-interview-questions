@@ -61,6 +61,7 @@ print(dict(zip(texts, similarities.tolist())))
 Meta's 2023 model that binds *six* modalities into a single shared space: image, text, audio, depth, thermal, IMU (inertial). The key trick: train all modalities to be aligned with images, and transitivity gives you cross-modal alignment between non-image pairs (e.g., audio ↔ text via the image anchor).
 
 ```python
+import torch
 from imagebind import data, ModalityType
 from imagebind.models import imagebind_model
 
@@ -89,6 +90,25 @@ Rather than a shared embedding space, these models produce *tokens* from the vis
 | Image captioning / description generation | — | ✓ |
 | Visual QA ("what does this chart say?") | — | ✓ |
 | Large-scale vector index over images | ✓ | — |
+
+### SigLIP and SigLIP 2
+
+Google's SigLIP (2023) swaps CLIP's softmax-based contrastive loss for a pairwise **sigmoid loss**, which scores each image-text pair independently instead of requiring a global view of every pair in the batch. This decouples training from batch size and improves performance in the small-batch regime. SigLIP's weights are released openly (Apache 2.0) on Hugging Face and via `timm` — it is a fully open CLIP alternative, not a closed/proprietary model.
+
+**SigLIP 2** (Google DeepMind, Feb 2025) extends the recipe by unifying contrastive alignment with captioning-based pretraining, self-distillation, and masked-patch prediction, and adds multilingual training (109 languages) plus variable-resolution/aspect-ratio-preserving inputs. It outperforms the original SigLIP at every model size on zero-shot classification, retrieval, and localization/dense-prediction tasks, and ships in four sizes (B, L, So400m, g). Weights are open, same as SigLIP.
+
+### The Landscape Since 2023
+
+CLIP, ImageBind, and BLIP-2 established the patterns above and remain the clearest models for *learning* the concepts, but the model landscape has moved on since 2023:
+
+- **SigLIP / SigLIP 2** (Google, open weights) — see above; SigLIP 2 in particular is a strong open default for new projects.
+- **Jina CLIP v2 / jina-embeddings-v4** (Jina AI) — multilingual CLIP-style encoders with Matryoshka embeddings (truncatable output dimension) and, in v4, long-context (8K-token) multimodal embedding plus an optional multi-vector/late-interaction output mode.
+- **Cohere Embed v4** (April 2025) — embeds interleaved text + image inputs (e.g., a PDF page's screenshot alongside its text) into a single vector space, aimed at retrieving over screenshots, slides, and tables without an OCR step first.
+- **Voyage multimodal-3 / voyage-4** (Voyage AI) — API-only multimodal embedding models; no self-hosted weights are published.
+- **ColPali / ColQwen** — a different retrieval paradigm from the single-vector models above: instead of one embedding per document, they produce a grid of patch embeddings per page image (ColPali is built on a SigLIP vision backbone) and score queries against them with late interaction (ColBERT-style MaxSim) rather than plain cosine similarity. Popular for retrieval over visually dense PDFs/slides where text extraction is lossy.
+- **ViDoRe (Visual Document Retrieval Benchmark)** — introduced alongside ColPali by Illuin Technology, ViDoRe is the standard benchmark for this class of models: it evaluates page-level retrieval over ~130K visually rich PDF pages (slides, infographics, scientific figures, administrative forms) spanning multiple domains and languages, scored with nDCG@5, without any OCR or text-extraction preprocessing step. Because it directly measures whether a model can retrieve the right *page image* for a query using visual layout and embedded text together, it's the reference leaderboard for comparing ColPali/ColQwen-style late-interaction retrievers against each other and against single-vector baselines.
+
+None of this invalidates CLIP/ImageBind/BLIP-2 as the right models for learning the underlying concepts — but when choosing a model for a new production system, benchmark SigLIP 2, Jina, Cohere Embed v4, and ColPali/ColQwen alongside CLIP rather than defaulting to CLIP by habit.
 
 ---
 
@@ -119,6 +139,8 @@ Combination strategies:
 ```
 
 ```python
+import numpy as np
+
 def embed_document_with_image(text: str, image_path: str, alpha: float = 0.5) -> np.ndarray:
     text_emb  = clip_text_encoder(text)
     image_emb = clip_image_encoder(Image.open(image_path))
@@ -132,6 +154,8 @@ def embed_document_with_image(text: str, image_path: str, alpha: float = 0.5) ->
 Use a domain-tuned text encoder (e.g., a fine-tuned BGE model) for text and CLIP's vision encoder for images. Align the spaces with a learned projection layer.
 
 ```python
+import torch
+
 class CrossModalProjector(torch.nn.Module):
     def __init__(self, text_dim: int = 768, image_dim: int = 512, shared_dim: int = 512):
         super().__init__()
@@ -234,7 +258,7 @@ def cross_modal_recall_at_k(queries, ground_truth_images, index, k=5):
 
 Different encoders produce embeddings in *incompatible spaces* — you cannot directly compare a CLIP vector with a BGE vector. Alignment strategies:
 
-1. **Use a single multi-modal model (CLIP, ImageBind)** — both modalities land in the same space by design.
+1. **Use a single multi-modal model (CLIP, ImageBind, SigLIP/SigLIP 2)** — both modalities land in the same space by design.
 2. **Fine-tune a projection** — train a linear layer to map your text encoder's space into CLIP's image space using paired (image, description) examples.
 3. **MAGICLENS / VLP alignment** — use a vision-language pre-training stage to align your custom encoders.
 
@@ -249,7 +273,10 @@ Rule of thumb: for most RAG use cases, CLIP is sufficient. Only invest in custom
 | CLIP ViT-B/32 | Image + Text | 512 | General-purpose cross-modal retrieval | Weak on dense text in images |
 | CLIP ViT-L/14 | Image + Text | 768 | Higher quality, same API | 2× memory vs. ViT-B/32 |
 | ImageBind | 6 modalities | 1024 | Audio+image+text alignment | Large model; harder to deploy |
-| SigLIP | Image + Text | 768 | Better recall than CLIP on zero-shot | Google proprietary training data |
+| SigLIP | Image + Text | 768 (varies by checkpoint) | Better recall than CLIP on zero-shot; weights openly released (Apache 2.0) | Training data (WebLI) not public, even though weights are |
+| SigLIP 2 | Image + Text | Varies by size (B/L/So400m/g) | Multilingual (109 languages), stronger localization/dense prediction than SigLIP; open weights | Newer, smaller tooling ecosystem than CLIP |
+| Cohere Embed v4 | Text + Image (interleaved) | 256–1536 (Matryoshka) | Retrieval over screenshots/PDFs/slides without an OCR step | API-only; no self-hosted weights |
+| ColPali / ColQwen | Document-page images + Text | 128 per patch (multi-vector) | Visually dense documents where text extraction is lossy | Multi-vector storage/index cost much higher than single-vector models |
 | E5-mistral (text-only with vision projection) | Text + Image (via projection) | 4096 | High-quality text, added vision | Complex deployment |
 
 ---
@@ -266,18 +293,26 @@ Rule of thumb: for most RAG use cases, CLIP is sufficient. Only invest in custom
 
 ## Interview Q&A
 
-**Q: How does CLIP's training enable cross-modal retrieval without labeled image-text pairs?**
+**Q: How does CLIP's training enable cross-modal retrieval without labeled image-text pairs?** `[Intermediate]`
 
 CLIP is trained with a contrastive objective on 400M web-scraped (image, alt-text) pairs — these are naturally co-occurring, not manually labeled. The loss function pulls each image embedding close to its paired text embedding and pushes it away from the other 255 images in the same batch (InfoNCE/NT-Xent loss). After training, both image and text encoders produce vectors in the same 512-dim space, so cosine similarity is directly comparable across modalities. The result: you can embed a text query and retrieve images purely by ANN search, no classification head required.
 
 ---
 
-**Q: What is "late fusion" vs. "early fusion" and when should you use each in multimodal RAG?**
+**Q: What is "late fusion" vs. "early fusion" and when should you use each in multimodal RAG?** `[Basic]`
 
 Early fusion combines raw inputs before encoding (requires a modality-aware architecture that can process both at once), while late fusion encodes each modality independently and then combines the resulting vectors. Late fusion is strongly preferred for RAG because: (1) you can reuse best-in-class encoders for each modality (e.g., BGE for text, CLIP for images) rather than one compromised joint model; (2) you can index text and image chunks in the same vector database and serve mixed retrieval with a single ANN query; (3) if you add a new modality later (e.g., audio), you add a new encoder without retraining the entire system. Early fusion is worth considering only when modalities are tightly coupled and cannot be meaningfully understood in isolation.
 
 ---
 
-**Q: How would you index a corpus of 10,000 PDF documents that contain both text and embedded figures?**
+**Q: How would you index a corpus of 10,000 PDF documents that contain both text and embedded figures?** `[Advanced]`
 
 Parse each PDF (PyMuPDF/pdfplumber) to extract: (a) text blocks → chunk by section → embed with a text encoder; (b) figures/images → extract as PNG → embed with CLIP image encoder; (c) tables → linearize to Markdown → embed with text encoder. Store all vectors in a single index with a `modality` metadata field (`"text"`, `"image"`, `"table"`). At query time, embed the query as text, search the entire index (all modalities), and let ANN similarity decide which chunks to retrieve. For image results, either pass the raw image to Claude's vision API or run BLIP-2/LLaVA to generate a caption for inclusion in the text prompt. Flag any figure with no surrounding caption text for manual review — those are the hardest for a text query to surface via semantic similarity alone.
+
+---
+
+## Related
+
+- [Document Ingestion and Parsing](./document_ingestion_and_parsing.md) — VLM-based parsing of PDFs with embedded figures and tables
+- [Embeddings](./embeddings.md) — foundational embedding concepts underlying multimodal encoders
+- [Multimodal RAG](../02_interview_bank/09-multimodal-rag.md) — end-to-end multimodal retrieval architecture
