@@ -828,6 +828,40 @@ The principle: the classifier is an *optimization*, never a *safety control*. Qu
 
 ---
 
+## Q13. Adaptive-RAG's classifier has to be trained. Is there a training-free way to decide when to retrieve? `[Advanced]`
+
+<details>
+<summary>💡 Show Answer</summary>
+
+**Answer:**
+
+Yes — this is the problem **TARG** ("Training-Free Adaptive Retrieval Gating for Efficient RAG," 2025) targets directly. Where Adaptive-RAG's router is a *trained* classifier (Q2, Q5) that has to be built, labeled, and periodically retrained, TARG makes the retrieve-or-not decision without any training at all, using signals already available from the base LLM.
+
+**Mechanism:**
+
+1. Generate a short **draft answer with no retrieved context** (the model answering from parametric knowledge alone).
+2. Measure the model's **uncertainty on that draft** using signals already exposed by decoding — token entropy and logit margin (the gap between the top and second-ranked token probabilities) — no separate classifier or training pass required.
+3. If uncertainty is low, the draft is trusted and returned as-is (no retrieval).
+4. If uncertainty is high, retrieval is triggered and the answer is regenerated with the retrieved context.
+
+**Reported effect:** cuts retrieval calls by roughly 70–90% relative to always-retrieve, while remaining training-free — no labeled complexity data, no classifier maintenance, no retraining cadence to manage.
+
+**How this compares to Adaptive-RAG and FLARE:**
+
+| Aspect | Adaptive-RAG classifier (Q2) | FLARE (Q4) | TARG |
+|---|---|---|---|
+| **Decision point** | Before generation (upfront routing) | During generation (mid-stream, per-token) | Before generation, but *after* a no-context draft |
+| **Requires training?** | Yes (labeled complexity classifier) | No (uses base model's token probabilities) | No (uses base model's token probabilities) |
+| **Signal used** | Query features → predicted complexity class | Next-token confidence while generating the real answer | Entropy/logit-margin on a *disposable* no-context draft |
+| **Extra cost when retrieval is skipped** | None | None | One extra cheap no-context generation pass |
+| **Maintenance burden** | Classifier drift, retraining, labeled data (Q5, Q11) | None | None |
+
+**When to reach for TARG over a trained router:** you don't have (or don't want to maintain) labeled query-complexity data, or you're standing up adaptive retrieval quickly and can tolerate the extra no-context draft generation as the cost of skipping classifier training entirely. When to stick with a trained classifier instead: you're at high enough QPS that even a cheap disposable draft generation is expensive relative to a lightweight classifier's near-zero routing cost (Q11).
+
+</details>
+
+---
+
 ## Real-World Applications
 
 | Application | Domain | Why Adaptive RAG Fits |

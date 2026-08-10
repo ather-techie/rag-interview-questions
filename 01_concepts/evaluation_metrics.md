@@ -461,6 +461,9 @@ def g_eval(question: str, answer: str, llm, rubric: str):
 | **HotpotQA** | Wikipedia | 113K Q&A | Multi-hop reasoning | Yang et al., 2018 |
 | **BEIR** | 18 diverse domains | 1.5M docs | Retrieval benchmark | Thakur et al., 2021 |
 | **QuALITY** | Long documents | 5K QA | Long-context retrieval | Pang et al., 2022 |
+| **MTRAG** | 4 domains (Wikipedia, tech docs, finance, government) | 110 human conversations, 842 eval tasks | Multi-turn conversational RAG — non-standalone questions (ellipsis/coreference across turns), unanswerable questions, later-turn degradation | Katsis et al. (IBM), 2025 |
+
+**Why MTRAG matters separately from the datasets above:** every other benchmark in this table is single-turn — one question, one gold context, one answer. MTRAG is human-authored multi-turn dialogue, so it stresses failure modes single-turn benchmarks structurally can't: a question like "what about the other one?" is only answerable by resolving reference against earlier turns, and even strong systems (GPT-4o, Llama 3.1 405B were the best-performing in the paper) show most of their errors concentrated in later turns and non-standalone questions rather than turn 1. If your production RAG system is conversational, single-turn eval numbers (including RAGAS's default synthetic-question generation) will systematically overstate how well it performs in real usage.
 
 ---
 

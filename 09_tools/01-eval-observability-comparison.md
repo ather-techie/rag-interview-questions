@@ -15,6 +15,8 @@
 | **DeepEval** | Unit-test-style LLM eval | No (LLM-judged) | Pytest-native (`assert_test`, `deepeval test run`) or standalone `evaluate()` | Actively maintained |
 | **LlamaIndex eval** | Built-in evaluators for LlamaIndex-built RAG pipelines | No for Faithfulness/Relevancy; yes for Correctness/Retriever hit_rate & MRR | Python classes (`FaithfulnessEvaluator`, `RetrieverEvaluator`, ...) called directly on responses | Actively maintained, tied to LlamaIndex |
 | **LangChain eval** | Criteria-based string evaluators | Depends on criteria (QA criteria needs a reference) | `load_evaluator(...)` from a now-legacy module | **Legacy/frozen** — see below |
+| **ARES** | Statistically-calibrated LLM judges (confidence intervals) | Yes — small human-labeled validation set (~hundreds of examples) + synthetic training data | Fine-tune domain judges, then `ppi_mean_iid` for calibrated scores | Research-grade; see [08_evaluation/03-llm-judge-frameworks.md](../08_evaluation/03-llm-judge-frameworks.md) |
+| **RAGChecker** | Claim-level retriever-vs-generator diagnostics | No (claim decomposition + entailment is LLM-judged) | Standalone `RAGResults` / `RAGChecker` evaluator over your own (query, response, contexts, gt_answer) records | Research-grade; see [08_evaluation/03-llm-judge-frameworks.md](../08_evaluation/03-llm-judge-frameworks.md) |
 
 ---
 
@@ -101,6 +103,12 @@ Don't present "LangChain → evaluation chains" as an actively-recommended curre
 
 ---
 
+## ARES & RAGChecker
+
+Both are research-grade frameworks (each with a maintained GitHub repo) that fix specific gaps in the RAGAS-style judge above — full mechanism, results, and code sketches are in [08_evaluation/03-llm-judge-frameworks.md](../08_evaluation/03-llm-judge-frameworks.md), not repeated here. In short: reach for **ARES** when you need a statistically calibrated score (confidence interval, not just a point estimate) and can invest in fine-tuning a domain-specific judge; reach for **RAGChecker** when you already know quality is bad and need claim-level attribution to tell whether the retriever or the generator is at fault. Neither is a drop-in replacement for Ragas/DeepEval as a lightweight CI gate — both are heavier-weight, purpose-built for a specific diagnostic question.
+
+---
+
 ## Decision Criteria
 
 | If... | Reach for |
@@ -110,6 +118,7 @@ Don't present "LangChain → evaluation chains" as an actively-recommended curre
 | You want pre-built, opinionated feedback functions plus tracing in one tool ("RAG Triad" vocabulary) | **TruLens** |
 | Your pipeline is already built on LlamaIndex primitives | **LlamaIndex eval** (`FaithfulnessEvaluator`, `RetrieverEvaluator`, ...) |
 | You're already on LangChain/LangGraph and want the least setup for tracing + eval | **LangSmith** (not the legacy `langchain.evaluation` module) |
+| You need calibrated scores with confidence intervals, or claim-level retriever-vs-generator diagnosis | **ARES** / **RAGChecker** — see [08_evaluation/03-llm-judge-frameworks.md](../08_evaluation/03-llm-judge-frameworks.md) |
 
 ---
 

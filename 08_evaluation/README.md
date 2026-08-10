@@ -8,13 +8,15 @@
 |------|---------------|
 | [01-golden-dataset-construction.md](01-golden-dataset-construction.md) | Query sampling, relevance labeling (manual + LLM-assisted), inter-annotator agreement, CI integration |
 | [02-ragas-ci-harness.md](02-ragas-ci-harness.md) | RAGAS setup, custom LLM judges, full CI harness with regression detection, GitHub Actions config |
+| [03-llm-judge-frameworks.md](03-llm-judge-frameworks.md) | Beyond RAGAS: ARES (calibrated judges), RAGChecker (claim-level diagnostics), ConsJudge (judge training), FaithJudge (hallucination leaderboard) |
 
 ## Where to Start
 
 1. **Understand the metrics**: [`01_concepts/evaluation_metrics.md`](../01_concepts/evaluation_metrics.md)
 2. **Build your golden dataset**: [`01-golden-dataset-construction.md`](01-golden-dataset-construction.md)
 3. **Wire it into CI**: [`02-ragas-ci-harness.md`](02-ragas-ci-harness.md)
-4. **Production monitoring and drift**: [`01_concepts/observability_and_evaluation_ops.md`](../01_concepts/observability_and_evaluation_ops.md)
+4. **Go deeper when RAGAS isn't enough**: [`03-llm-judge-frameworks.md`](03-llm-judge-frameworks.md) — calibrated confidence intervals (ARES), retriever-vs-generator diagnosis (RAGChecker), judge training (ConsJudge), hallucination leaderboards (FaithJudge)
+5. **Production monitoring and drift**: [`01_concepts/observability_and_evaluation_ops.md`](../01_concepts/observability_and_evaluation_ops.md)
 
 ## The Eval Pyramid
 
