@@ -1,6 +1,6 @@
 # RAG Taxonomy: Classification and Architecture Mapping
 
-> All 41 RAG architectures mapped by mechanism, data source, retrieval control, and production fit.
+> All 52 RAG architectures mapped by mechanism, data source, retrieval control, and production fit.
 
 ---
 
@@ -33,7 +33,7 @@ Each axis maps to a different set of failure modes and trade-offs. Mastering the
 
 ---
 
-## The Full Taxonomy: All 41 Architectures
+## The Full Taxonomy: All 52 Architectures
 
 | Architecture | Retrieval Control | Data Modality | Feedback Loop | Scope | Fine-tune Required? | Latency Class | Production Maturity |
 |---|---|---|---|---|---|---|---|
@@ -79,8 +79,19 @@ Each axis maps to a different set of failure modes and trade-offs. Mastering the
 | WebGPT / Tool-Augmented LM | Agent-driven | Text-only (live web) | Self-critique | Multi-hop | **Yes** (RLHF) | Slow (>1s) | Foundational (2021) |
 | SURGE (Schema-Grounded RAG) | Static | Text-only | Self-critique (NLI) | Single-hop | No | Medium (200ms–1s) | Emerging (2024+) |
 | Recursive Document Summarization RAG | Static | Text-only | None | Multi-hop (tree) | No | Fast (<200ms) | Emerging (2024+) |
+| Search-R1 / Reasoning RAG | Agent-driven | Text-only | External signal | Iterative | **Yes** | Medium (200ms–1s) | Experimental (2025+) |
+| Deep Research / Agentic Research RAG | Agent-driven | Text-only (live web) | Self-critique (optional) | Multi-hop | No | High (>1s, minutes) | Production (commercial), Emerging (open-source) |
+| MemoRAG | Dynamic | Text-only | None | Single-hop (per clue), Multi-hop (aggregate) | **Yes** | Medium (200ms–1s) | Experimental (2024+) |
+| LongRAG + Self-Route | Dynamic | Text-only | Self-critique | Single-hop | No | Medium (200ms–1s)* | Emerging (2024+) |
+| VisRAG | Static | Multimodal (page-images) | None | Single-hop | **Yes** (retrieval encoder) | Medium (200ms–1s) | Experimental (2024+) |
+| LazyGraphRAG | Dynamic | Graph | Self-critique | Iterative | No | Medium (200ms–1s)* | Emerging (2024+) |
+| Astute RAG | Static | Text-only | Self-critique | Single-hop | No | Medium (200ms–1s) | Experimental (2024+) |
+| Auto-RAG / DeepRAG | Agent-driven | Text-only | Self-critique | Multi-hop / Iterative | **Yes** | Medium (200ms–1s)* | Experimental (2024+) |
+| CoRAG (Chain-of-Retrieval) | Agent-driven | Text-only | External signal | Multi-hop / Iterative | **Yes** | Medium (200ms–1s)* | Emerging (2025+) |
+| RQ-RAG | Agent-driven | Text-only | Self-critique | Multi-hop / Iterative | **Yes** | Medium (200ms–1s) | Experimental (2024+) |
+| REFRAG | Static | Text-only | Self-critique | Single-hop | **Yes** | Fast (<200ms) | Emerging (2025+) |
 
-\* Query-time latency is low; HippoRAG and CAG pay a large up-front (index-build / KV-cache) cost instead.
+\* Query-time latency is low; HippoRAG and CAG pay a large up-front (index-build / KV-cache) cost instead. LongRAG, LazyGraphRAG, and Auto-RAG/DeepRAG vary with routing/expansion/step-count decisions made per query. CoRAG's latency also scales with the chosen chain length (a test-time compute knob).
 ‡ DPR is also a training-time architecture but is listed separately as the foundational bi-encoder retrieval model rather than a full RAG pipeline.
 † **Training-time / parametric** architectures: retrieval is integrated into pre-training or the model architecture (and the retriever/reader is trained), rather than bolted on at inference. They form a distinct branch from the inference-time architectures above.
 
@@ -174,7 +185,7 @@ Most production systems combine two or more patterns. For example, a system that
 
 ## Hybrid Systems in Practice
 
-Most production RAG systems are not pure. They combine two or more of the 29 architectures.
+Most production RAG systems are not pure. They combine two or more of the 52 architectures.
 
 | Common Combination | Why It's Done | Trade-off |
 |---|---|---|

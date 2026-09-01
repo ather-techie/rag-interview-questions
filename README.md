@@ -10,10 +10,10 @@
 
 
 <p align="center">
-  <img src="assets/logos/image.png" alt="RAG (Retrieval-Augmented Generation) Interview Questions and Answers — 548 Q&A covering 41 architectures and production failure modes" width="800" />
+  <img src="assets/logos/image.png" alt="RAG (Retrieval-Augmented Generation) Interview Questions and Answers — 603 Q&A covering 52 architectures and production failure modes" width="800" />
 </p>
 
-**548 RAG (Retrieval-Augmented Generation) interview questions and answers** for AI engineers, ML engineers, and GenAI/LLM developers. Covers all 41 RAG architectures, system design scenarios, vector databases, embeddings, chunking, reranking, evaluation, and the production failure modes that come up in real LLM engineering interviews.
+**603 RAG (Retrieval-Augmented Generation) interview questions and answers** for AI engineers, ML engineers, and GenAI/LLM developers. Covers all 52 RAG architectures, system design scenarios, vector databases, embeddings, chunking, reranking, evaluation, and the production failure modes that come up in real LLM engineering interviews.
 
 ⭐ **Star this repo** if it helps your interview prep — it keeps the project growing.
 
@@ -34,14 +34,14 @@
 
 ## 📚 Sections
 
-[Getting Started](#-getting-started) · [Core Concepts](#-core-concepts) · [RAG Architecture Interview Questions](#-rag-architecture-interview-questions-41-types) · [Failure Modes & Production Issues](#-failure-modes--production-issues) · [Labs & Patterns](#-labs--patterns) · [Coming Soon](#-coming-soon)
+[Getting Started](#-getting-started) · [Core Concepts](#-core-concepts) · [RAG Architecture Interview Questions](#-rag-architecture-interview-questions-52-types) · [Failure Modes & Production Issues](#-failure-modes--production-issues) · [Labs & Patterns](#-labs--patterns) · [Coming Soon](#-coming-soon)
 
 ### 🗺️ Getting Started
 
 | # | Topic | Purpose | Questions |
 |---|-------|---------|-----------|
 | 00a | [Roadmap](./00_overview/roadmap.md) | RAG maturity model, skill progression, and interview prep pathway | – |
-| 00b | [RAG Taxonomy](./00_overview/rag_taxonomy.md) | Classification framework for all 41 architectures across 4 axes | – |
+| 00b | [RAG Taxonomy](./00_overview/rag_taxonomy.md) | Classification framework for all 52 architectures across 4 axes | – |
 | 00c | [Learning Path](./00_overview/learning_path.md) | Structured curriculum and study plans | – |
 | 00d | [System Design Principles](./00_overview/system_design_principles.md) | Production-grade architecture patterns | – |
 
@@ -69,7 +69,7 @@
 
 **Core Concepts Total: 74 questions across 17 files**
 
-### ❓ RAG Architecture Interview Questions (41 Types)
+### ❓ RAG Architecture Interview Questions (52 Types)
 
 | # | Topic | Questions |
 |---|-------|-----------|
@@ -114,8 +114,19 @@
 | 02.39 | [WebGPT / Tool-Augmented LM](./02_interview_bank/39-webgpt-tool-augmented-lm.md) | 3 |
 | 02.40 | [SURGE (Schema-Grounded RAG)](./02_interview_bank/40-surge-structured-grounded-rag.md) | 3 |
 | 02.41 | [Recursive Document Summarization RAG](./02_interview_bank/41-recursive-document-summarization-rag.md) | 3 |
+| 02.42 | [Search-R1 / Reasoning RAG](./02_interview_bank/42-search-r1-reasoning-rag.md) | 5 |
+| 02.43 | [Deep Research / Agentic Research RAG](./02_interview_bank/43-deep-research-rag.md) | 5 |
+| 02.44 | [MemoRAG](./02_interview_bank/44-memorag.md) | 5 |
+| 02.45 | [LongRAG + Self-Route](./02_interview_bank/45-longrag.md) | 5 |
+| 02.46 | [VisRAG](./02_interview_bank/46-visrag.md) | 5 |
+| 02.47 | [LazyGraphRAG](./02_interview_bank/47-lazygraphrag.md) | 5 |
+| 02.48 | [Astute RAG](./02_interview_bank/48-astute-rag.md) | 5 |
+| 02.49 | [Auto-RAG / DeepRAG](./02_interview_bank/49-auto-rag-deeprag.md) | 5 |
+| 02.50 | [CoRAG (Chain-of-Retrieval)](./02_interview_bank/50-corag.md) | 5 |
+| 02.51 | [RQ-RAG](./02_interview_bank/51-rq-rag.md) | 5 |
+| 02.52 | [REFRAG](./02_interview_bank/52-refrag.md) | 5 |
 
-**RAG Architectures Total: 395 questions**
+**RAG Architectures Total: 450 questions**
 
 ### ⚠️ Failure Modes & Production Issues
 
@@ -133,9 +144,9 @@
 
 **Failure Modes Total: 79 questions**
 
-**Grand Total: 548 questions**
+**Grand Total: 603 questions**
 
-**Difficulty distribution: ~61 Basic, ~215 Intermediate, ~248 Advanced**
+**Difficulty distribution: ~72 Basic, ~248 Intermediate, ~259 Advanced**
 
 All cited papers with arXiv/DOI links: [REFERENCES.md](./REFERENCES.md)
 
@@ -160,9 +171,9 @@ Hands-on Jupyter notebooks and composition pattern guides:
 
 ---
 
-## 🗺️ RAG Architecture Types Explained (41 Patterns + 9 Failure Modes)
+## 🗺️ RAG Architecture Types Explained (52 Patterns + 9 Failure Modes)
 
-**RAG Architectures (41 types):**
+**RAG Architectures (52 types):**
 ```
 Naive RAG
   └── Chunk → Embed → Store → Retrieve → Generate
@@ -286,6 +297,39 @@ SURGE (Schema-Grounded RAG)  [NEW]
 
 Recursive Document Summarization RAG  [NEW]
   └── 4-level summary tree (chunk→section→doc→corpus); routes queries to the right level
+
+Search-R1 / Reasoning RAG  [NEW]
+  └── Trains an LLM via RL to autonomously interleave reasoning and self-issued search calls, learning a retrieval policy from answer-correctness reward alone
+
+Deep Research / Agentic Research RAG  [NEW]
+  └── Runs parallel plan-search-read-synthesize sub-agents over a cost/latency budget to produce a long-form, multi-source cited report rather than a single answer
+
+MemoRAG  [NEW]
+  └── Compresses the whole corpus into a lightweight global memory that generates query-time draft clues to guide a precise retriever toward implicit or aggregate evidence
+
+LongRAG + Self-Route  [NEW]
+  └── Retrieves large (~4K-token) grouped units instead of small chunks, with Self-Route deciding per-query whether RAG or full long-context stuffing is needed
+
+VisRAG  [NEW]
+  └── Embeds and reads document pages as images end-to-end via a VLM, skipping OCR/layout parsing for both retrieval and generation
+
+LazyGraphRAG  [NEW]
+  └── Builds only a cheap NLP noun-phrase co-occurrence graph at index time, deferring all LLM summarization to a query-time relevance-test-and-expand loop
+
+Astute RAG  [NEW]
+  └── Elicits the LLM's own parametric knowledge as an explicit source, then iteratively reconciles it with retrieved passages to resolve conflicts
+
+Auto-RAG / DeepRAG  [NEW]
+  └── Decides retrieve-vs-reason at every reasoning step rather than once up-front, via autonomous multi-turn dialogue or an explicit MDP over subqueries
+
+CoRAG (Chain-of-Retrieval)  [NEW]
+  └── Trains on rejection-sampled retrieval chains to learn dynamic query reformulation; chain length becomes a test-time compute scaling knob
+
+RQ-RAG  [NEW]
+  └── Fine-tunes the LLM to explicitly choose and chain query-refinement operations (rewrite / decompose / disambiguate) via special tokens
+
+REFRAG  [NEW]
+  └── Compresses retrieved chunks into single dense embeddings and uses an RL-trained policy to selectively expand only the important ones, cutting TTFT ~30x
 ```
 
 **Production Failure Modes (9 critical issues):**
@@ -342,7 +386,7 @@ Semantic Cache Leakage  [NEW]
    - Use for system design rounds and production-readiness discussions
 
 5. **CHEATSHEET (cheatsheets/CHEATSHEET.md)** — Quick reference
-   - All 41 RAG types compared in one table
+   - All 52 RAG types compared in one table
    - Use during phone screens or quick prep
 
 **Study path:**
@@ -355,7 +399,7 @@ Semantic Cache Leakage  [NEW]
 
 ## 🏷️ Topics Covered
 
-Embeddings · Chunking strategies · Vector databases (FAISS, Pinecone, Weaviate, pgvector) · Hybrid search (BM25 + dense) · Reranking & cross-encoders · RAG evaluation (RAGAS, NDCG) · Agentic RAG · Graph RAG · Self-RAG & Corrective RAG · Multi-modal RAG · Text-to-SQL · Prompt injection & RAG security · Hallucination mitigation · LLM observability · Multi-tenancy & access control · Knowledge graph construction · Semantic caching · Cost optimization · Privacy-preserving retrieval · Streaming / real-time indexing · Citation & attribution · ColBERT multi-vector retrieval
+Embeddings · Chunking strategies · Vector databases (FAISS, Pinecone, Weaviate, pgvector) · Hybrid search (BM25 + dense) · Reranking & cross-encoders · RAG evaluation (RAGAS, NDCG) · Agentic RAG · Graph RAG · Self-RAG & Corrective RAG · Multi-modal RAG · Text-to-SQL · Prompt injection & RAG security · Hallucination mitigation · LLM observability · Multi-tenancy & access control · Knowledge graph construction · Semantic caching · Cost optimization · Privacy-preserving retrieval · Streaming / real-time indexing · Citation & attribution · ColBERT multi-vector retrieval · Reasoning RAG & RL-trained search (Search-R1) · Deep Research agents · Vision-native RAG (VisRAG)
 
 ---
 
@@ -393,6 +437,6 @@ For issues, questions, or general feedback:
 [license-shield]: https://img.shields.io/github/license/ather-techie/rag-interview-questions
 [license-url]: LICENSE
 [commits-shield]: https://img.shields.io/github/last-commit/ather-techie/rag-interview-questions
-[questions-shield]: https://img.shields.io/badge/questions-548-blue
+[questions-shield]: https://img.shields.io/badge/questions-603-blue
 [prs-shield]: https://img.shields.io/badge/PRs-welcome-brightgreen
 [prs-url]: CONTRIBUTING.md

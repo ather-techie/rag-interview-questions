@@ -45,6 +45,17 @@
 | 39 | **WebGPT / Tool-Augmented LM** | LLM trained via RLHF to issue browser actions (search/click/quote) as first-class learned operations | When prompting-based tool use is unreliable; narrow/stable tool space; verification signal available | Rapidly evolving tool space; prompting already reliable; training cost is prohibitive |
 | 40 | **SURGE (Schema-Grounded RAG)** | Schema-constrained generation via tool_use + per-field NLI grounding verification before delivery | ETL from documents, compliance reports, database population — any structured output needing per-field auditability | Conversational/advisory output where field-level traceability is unnecessary |
 | 41 | **Recursive Document Summarization RAG** | Multi-level summary tree (chunk → section → document → corpus) built offline; query routing selects the right abstraction level at inference | Large documents navigated at multiple granularities (annual reports, contracts); "what does section 3 say?" | Cross-document thematic queries (use RAPTOR instead); small corpora |
+| 42 | **Search-R1 / Reasoning RAG** | RL-trained LLM interleaves `<think>`/`<search>` tokens, learning a retrieval policy from answer-correctness reward | Domains with verifiable answers and RL training budget (QA, math, coding search) | No RL training infra/budget; prompted agentic RAG already sufficient |
+| 43 | **Deep Research / Agentic Research RAG** | Parallel plan → search → read → synthesize sub-agents produce a long-form cited report | Open-ended research questions needing dozens of sources and a full report | Simple single-answer lookups; hard latency/cost budgets (minutes, dollars per query) |
+| 44 | **MemoRAG** | Lightweight memory model compresses the corpus, generates query-time draft "clues" to guide precise retrieval | Implicit or aggregate queries where no single passage has the answer | Simple factoid lookups where standard dense retrieval already works |
+| 45 | **LongRAG + Self-Route** | Retrieves large (~4K-token) grouped units instead of small chunks; Self-Route picks RAG vs. full long-context per query | Long documents where small-chunk fragmentation loses context | Very large corpora (long units cost more per retrieval); tight latency budgets |
+| 46 | **VisRAG** | VLM embeds and reads document pages as images end-to-end — no OCR/layout parsing | Visually rich documents (scanned PDFs, forms, slides) where parsing loses structure | Plain-text corpora; VLM inference cost/latency is prohibitive |
+| 47 | **LazyGraphRAG** | Cheap NLP noun-phrase graph at index time; all LLM summarization deferred to a query-time relevance-test loop | Graph-style queries where GraphRAG's indexing cost is prohibitive | Extremely low query-time latency requirements (relevance-test loop adds cost per query) |
+| 48 | **Astute RAG** | Elicits the LLM's own parametric knowledge as an explicit source, then reconciles it with retrieved passages | Domains with frequent retrieval-vs-parametric-knowledge conflicts | Retrieval is already highly reliable and conflicts are rare |
+| 49 | **Auto-RAG / DeepRAG** | Decides retrieve-vs-reason at every step (autonomous dialogue or explicit MDP), not once up-front | Multi-step reasoning tasks where retrieval need varies per step | Simple single-hop queries; no fine-tuning budget |
+| 50 | **CoRAG (Chain-of-Retrieval)** | Trained on rejection-sampled retrieval chains; chain length is a tunable test-time compute knob | Multi-hop QA where you can trade inference cost for accuracy | Fixed low-latency budget; no fine-tuning pipeline |
+| 51 | **RQ-RAG** | Fine-tuned to explicitly rewrite / decompose / disambiguate queries via special tokens before retrieval | Ambiguous or compound queries where prompted rewriting underperforms | No fine-tuning budget; prompted HyDE/Multi-Query already sufficient |
+| 52 | **REFRAG** | Compresses chunks into dense embeddings; RL policy selectively expands important ones back to full tokens | Latency-critical RAG with many retrieved chunks (long effective context) | Small k (few chunks); training/serving the compression+policy stack is not worth it |
 
 ---
 
@@ -96,6 +107,17 @@ Relative ratings for a typical mid-size deployment (●○○ low → ●●● 
 | WebGPT / Tool-Augmented LM | ●●●* | ●●● | ●●● | ●●● | *RLHF pipeline is expensive; inference is multi-step browsing with LLM calls |
 | SURGE | ●●○ | ●●○ | ●●○ | ●●○ | Tool-use generation + NLI verification pass per field; LLM call per extracted object |
 | Recursive Summary RAG | ●●○* | ●○○ | ●●○ | ●●○ | *Up-front Haiku summarization per section/document; query-time routing is a single cheap Haiku call |
+| Search-R1 / Reasoning RAG | ●●○* | ●●○ | ●●● | ●●○ | *Heavy RL training cost; inference is a bounded number of self-issued search calls |
+| Deep Research RAG | ●●●● | ●●●● | ●●○ | ●●○ | Dozens of parallel sub-agent LLM calls + page fetches per report |
+| MemoRAG | ●●○ | ●●○ | ●●● | ●●○ | Memory-model training/compression up front; extra clue-generation call per query |
+| LongRAG + Self-Route | ●●○ | ●●○ | ●●○ | ●○○ | Larger retrieval units → more tokens fed to the reader per call |
+| VisRAG | ●●○ | ●●○ | ●●○ | ●●○ | VLM inference on page images at both index and query time |
+| LazyGraphRAG | ●○○* | ●○○ | ●●○ | ●●○ | *Cheap NLP-only indexing; query-time iterative relevance testing instead |
+| Astute RAG | ●●○ | ●●○ | ●○○ | ●○○ | Extra internal-knowledge elicitation + multi-round consolidation calls |
+| Auto-RAG / DeepRAG | ●●○* | ●●○ | ●●● | ●●○ | *Fine-tuning on decision traces; variable per-step retrieve/reason calls at inference |
+| CoRAG | ●●●* | ●●○ | ●●● | ●●○ | *Fine-tuning on rejection-sampled chains; chain length is a tunable test-time cost knob |
+| RQ-RAG | ●●○* | ●●○ | ●●● | ●●○ | *Fine-tuning cost; tree-decoding across refinement branches at inference |
+| REFRAG | ●○○* | ●○○ | ●●● | ●●○ | *RL + encoder training up front; ~30x lower TTFT than raw-token baseline at inference |
 
 ---
 
